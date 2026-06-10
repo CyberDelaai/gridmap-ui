@@ -1,4 +1,4 @@
-<!-- GRIDMAP v0.3.1 -->
+<!-- GRIDMAP v0.4.0 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -223,7 +223,11 @@
   /* // GRID panel: the labelled AUTO|MANUAL toggle */
   .topbar { display: flex; flex-direction: column; gap: 14px; margin-bottom: 14px; }
   .topbar .fx-toggle { margin-top: 0; }
-  .topbar .side-switch.auto-switch { width: 120px; }
+  /* // DETECTION: the [AUTO] [SELECT] button pair */
+  .detect-group { display: flex; flex-direction: column; gap: 8px; }
+  .detect-btns { display: flex; gap: 8px; }
+  .detect-btn { flex: 1; height: 38px; letter-spacing: 2px; }
+  .btn.detect-btn.active { background: color-mix(in srgb, var(--btn-color) 28%, transparent); box-shadow: 0 0 12px color-mix(in srgb, var(--btn-color) 50%, transparent); }
   /* readout bar above the map view: resulting size + detection accuracy,
      left-aligned (stays put in MANUAL mode or after crop/expand) */
   .workspace .calc-bar { align-self: flex-start; display: flex; align-items: baseline; gap: 24px; flex-wrap: wrap; }
@@ -308,6 +312,9 @@
   .dropzone.has-image { border-style: solid; border-color: rgba(var(--main-rgb),0.5); background: #000; }
   .dropzone.has-image .placeholder { display: none; }
   .dropzone.has-image .canvas-wrap { display: inline-block; }
+  /* region-select mode: crosshair + always-visible selection overlay */
+  .dropzone.selecting, .dropzone.selecting .canvas-wrap, .dropzone.selecting canvas { cursor: crosshair; }
+  .dropzone.selecting #gridCanvas { opacity: 1; }
 
   @media (max-width: 1100px) {
     .layout { flex-wrap: wrap; }
@@ -329,7 +336,7 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.3.1</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.4.0</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
@@ -338,15 +345,16 @@
     <aside class="config config-left" data-augmented-ui="tl-clip br-clip border">
       <h2>// GRID</h2>
       <div class="topbar">
-        <div class="fx-toggle">
+        <div class="detect-group">
           <span class="fx-label">// DETECTION:</span>
-          <button class="side-switch auto-switch" id="autoToggle" type="button" data-pos="left" aria-label="auto or manual grid">
-            <span class="thumb"></span><span class="lab l">AUTO</span><span class="lab r">MANUAL</span>
-          </button>
+          <div class="detect-btns">
+            <button class="btn detect-btn" id="autoBtn" type="button" data-augmented-ui="tl-clip br-clip both">AUTO</button>
+            <button class="btn detect-btn" id="selectBtn" type="button" data-augmented-ui="tl-clip br-clip both">SELECT</button>
+          </div>
         </div>
       </div>
-      <p class="hint">AUTO uses the detected grid. Use the // CANVAS pad to take manual control; AUTO resets everything back to detection.</p>
-
+      <p class="hint">AUTO runs the automatic 5-point detection.</p> 
+      <p class="hint">SELECT lets you choose area for grid detection (Ctrl for multiple selection)</p>
       <h2 class="canvas-h2">// CANVAS</h2>
       <div class="canvas-controls">
         <div class="dpad" role="group" aria-label="move canvas window over the image">
@@ -513,7 +521,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v0.3.1';
+    const VER = ' // v0.4.0';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 
@@ -681,7 +689,7 @@
     return { offset: bo, strength: (n > 0 && mean > 0) ? (bs / n) / mean : 0 };
   }
 
-  function analyzeImageData(img) {
+  function analyzeImageData(img, regions) {
     const { data, width: W, height: H } = img;
     const L = toLuma(data, W, H);
 
@@ -695,18 +703,27 @@
     };
     if (pMax < pMin) return fail;
 
-    // --- Probe 5 windows in a dice-5 / quincunx layout (4 corners + centre).
-    // Each votes on the cell period; the median is robust to local clutter and
-    // stops the centre from dominating the fit. ---
-    const win = Math.min(W, H, Math.max(pMax * 3, Math.round(Math.min(W, H) * 0.55)));
-    const spots = [
-      [0, 0], [W - win, 0], [0, H - win], [W - win, H - win],
-      [Math.round((W - win) / 2), Math.round((H - win) / 2)],
-    ];
-    const good = spots
-      .map(([x0, y0]) => {
-        const { col, row } = regionProfiles(L, W, Math.max(0, x0), Math.max(0, y0), win, win);
-        return detectPeriod(col, win, row, win, pMin, pMax);
+    // --- Probe windows that each vote on the cell period; the median is robust
+    // to local clutter. Default: a dice-5 / quincunx layout (4 corners + centre).
+    // If the user hand-picked region(s), probe those instead. ---
+    let windows;
+    if (regions && regions.length) {
+      windows = regions.map((r) => {
+        const x0 = Math.max(0, Math.min(W - 1, Math.round(r.x)));
+        const y0 = Math.max(0, Math.min(H - 1, Math.round(r.y)));
+        return [x0, y0, Math.max(1, Math.min(W - x0, Math.round(r.w))), Math.max(1, Math.min(H - y0, Math.round(r.h)))];
+      });
+    } else {
+      const win = Math.min(W, H, Math.max(pMax * 3, Math.round(Math.min(W, H) * 0.55)));
+      windows = [
+        [0, 0], [W - win, 0], [0, H - win], [W - win, H - win],
+        [Math.round((W - win) / 2), Math.round((H - win) / 2)],
+      ].map(([x, y]) => [Math.max(0, x), Math.max(0, y), win, win]);
+    }
+    const good = windows
+      .map(([x0, y0, rw, rh]) => {
+        const { col, row } = regionProfiles(L, W, x0, y0, rw, rh);
+        return detectPeriod(col, rw, row, rh, pMin, pMax);
       })
       .filter((p) => p.confidence >= CONF_T);
     if (!good.length) return fail;
@@ -776,45 +793,47 @@
   // ---- Working-area image import + analysis (drag-drop / paste / click) ----
   (function setupImport() {
     const zone = $('dropzone'), mapC = $('mapCanvas'), gridC = $('gridCanvas'),
-      input = $('fileInput'), exportBtn = $('exportBtn');
+      input = $('fileInput'), exportBtn = $('exportBtn'), canvasWrap = $('canvasWrap');
     if (!zone || !mapC || !gridC || !input) return;
     let loaded = null;        // current map + detected grid geometry, for PNG export
     let autoFill = '#808080'; // detected primary (border) colour of the current map
 
-    function onImage(image, restore) {
-      const nW = image.naturalWidth, nH = image.naturalHeight;
-      if (!nW || !nH) return;
-
-      // 1) analysis on a downscaled copy
+    // Run detection on a downscaled copy of loaded.image — over the whole image,
+    // or only the user-picked region(s) — and write the result into loaded's
+    // geometry. (loaded.image must already be set.)
+    function detectGrid(regions) {
+      const image = loaded.image, nW = image.naturalWidth, nH = image.naturalHeight;
       const aScale = Math.min(1, ANALYSIS_MAX / Math.max(nW, nH));
       const aW = Math.max(1, Math.round(nW * aScale)), aH = Math.max(1, Math.round(nH * aScale));
       const ac = document.createElement('canvas'); ac.width = aW; ac.height = aH;
       const actx = ac.getContext('2d', { willReadFrequently: true });
       actx.drawImage(image, 0, 0, aW, aH);
-      const res = analyzeImageData(actx.getImageData(0, 0, aW, aH));
-
-      // 2) detected grid, or estimate from a default cell size
-      let cols, rows, estimated, vFrac, vOff, hFrac, hOff;
+      const scaled = regions && regions.map((r) => ({ x: r.x * aScale, y: r.y * aScale, w: r.w * aScale, h: r.h * aScale }));
+      const res = analyzeImageData(actx.getImageData(0, 0, aW, aH), scaled);
       if (res.detected) {
-        cols = res.cols; rows = res.rows; estimated = false;
-        vFrac = res.ax.periodFrac; vOff = res.ax.offsetFrac;
-        hFrac = res.ay.periodFrac; hOff = res.ay.offsetFrac;
+        loaded.cols = res.cols; loaded.rows = res.rows; loaded.estimated = false;
+        loaded.vFrac = res.ax.periodFrac; loaded.vOff = res.ax.offsetFrac;
+        loaded.hFrac = res.ay.periodFrac; loaded.hOff = res.ay.offsetFrac;
       } else {
-        cols = Math.max(1, Math.round(nW / DEFAULT_CELL_PX));
-        rows = Math.max(1, Math.round(nH / DEFAULT_CELL_PX));
-        estimated = true;
-        vFrac = 1 / cols; vOff = 0; hFrac = 1 / rows; hOff = 0;
+        loaded.cols = Math.max(1, Math.round(nW / DEFAULT_CELL_PX));
+        loaded.rows = Math.max(1, Math.round(nH / DEFAULT_CELL_PX));
+        loaded.estimated = true;
+        loaded.vFrac = 1 / loaded.cols; loaded.vOff = 0; loaded.hFrac = 1 / loaded.rows; loaded.hOff = 0;
       }
+      loaded.confidence = res.confidence;
+    }
 
-      // 3) store the map + detected geometry; renderDisplay() does the drawing
-      //    (so it reflects the live crop/expand/fill settings, not just export)
-      loaded = { image, cols, rows, vFrac, vOff, hFrac, hOff, estimated, confidence: res.confidence };
+    function onImage(image, restore) {
+      const nW = image.naturalWidth, nH = image.naturalHeight;
+      if (!nW || !nH) return;
+      loaded = { image, cols: 1, rows: 1, vFrac: 1, vOff: 0, hFrac: 1, hOff: 0, estimated: true, confidence: 0 };
+      detectGrid(null);                // full-image detection
       autoFill = edgeColor(image);     // detected primary colour for the fill swatch
       if (restore) {                   // reload of the saved map → restore the saved settings
         restoreManual();
         syncToggles(); refreshFill(); syncFillMode();
       } else {                         // fresh import → detected defaults + smart fix-edges
-        manual = false; gCols = cols; gRows = rows; offX = 0; offY = 0;
+        manual = false; gCols = loaded.cols; gRows = loaded.rows; offX = 0; offY = 0;
         applyAutoFix();                // smart fix-edges default (+ syncToggles + refreshFill)
       }
       syncAutoMode();
@@ -836,7 +855,7 @@
       image.src = url;
     }
 
-    zone.addEventListener('click', () => input.click());
+    zone.addEventListener('click', () => { if (selecting || blockZoneClick) return; input.click(); });
     input.addEventListener('change', (e) => load(e.target.files[0]));
     zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
     zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
@@ -853,13 +872,14 @@
     const fixEdgesToggle = $('fixEdgesToggle'), modeToggle = $('modeToggle'), modeRow = $('modeRow'),
       fillRow = $('fillRow'), fillSwatch = $('fillSwatch'), fillVibrant = $('fillVibrant'),
       fillColor = $('fillColor');
-    const autoToggle = $('autoToggle'), colVal = $('colVal'), rowVal = $('rowVal'),
+    const autoBtn = $('autoBtn'), selectBtn = $('selectBtn'), colVal = $('colVal'), rowVal = $('rowVal'),
       calcSize = $('calcSize'), calcVal = $('calcVal'), accVal = $('accVal'), panReset = $('panReset');
     let fixEdges = false, edgeMode = 'crop', fillOverride = '', fillMode = 'vibrant';
     let manual = false, winC0 = 0, winR0 = 0, winC1 = 0, winR1 = 0;   // MANUAL window, in grid-cell indices
     let gCols = 0, gRows = 0;   // current grid cell counts (NN×MM); ×2 //2 ×3 //3 rescale these
     let offX = 0, offY = 0;     // grid-origin nudge from the top-left (image px, sub-cell)
     let zoom = 100;             // map-view scale, 10..300 (% of the fit-to-view size)
+    let selecting = false, regions = [], dragStart = null, dragRect = null, blockZoneClick = false;  // region-pick mode
     try {
       fixEdges = localStorage.getItem('gridmap:fixEdges') === '1';
       if (localStorage.getItem('gridmap:edgeMode') === 'expand') edgeMode = 'expand';
@@ -965,7 +985,9 @@
       };
     }
     function syncAutoMode() {
-      if (autoToggle) autoToggle.dataset.pos = manual ? 'right' : 'left';
+      // AUTO lit on the auto-detected grid; SELECT lit while picking areas
+      if (autoBtn) autoBtn.classList.toggle('active', !manual && !selecting);
+      if (selectBtn) selectBtn.classList.toggle('active', selecting);
       syncToggles();   // the FILL control is also usable in MANUAL (off-image fill)
     }
     // Re-apply the smart fix-edges default from the DETECTED grid — used on
@@ -1066,13 +1088,18 @@
       });
       panReset.addEventListener('contextmenu', (e) => e.preventDefault());
     }
-    if (autoToggle) autoToggle.addEventListener('click', () => {
-      if (manual) {                                 // → AUTO: reset everything to detection
-        manual = false; offX = 0; offY = 0;
-        if (loaded) { gCols = loaded.cols; gRows = loaded.rows; applyAutoFix(); }
-      } else setManual();                           // → MANUAL
+    // AUTO button: run the default 5-point detection and return to the auto grid.
+    function runAuto() {
+      if (!loaded) return;
+      selecting = false; regions = []; dragStart = null; dragRect = null;   // leave region-pick
+      zone.classList.remove('selecting');
+      detectGrid(null);                             // default quincunx (5-point) detection
+      manual = false; offX = 0; offY = 0;
+      gCols = loaded.cols; gRows = loaded.rows;
+      applyAutoFix();
       syncAutoMode(); renderDisplay();
-    });
+    }
+    if (autoBtn) autoBtn.addEventListener('click', runAuto);
 
     // Live d-pad icons: < > ^ v (and \ /), doubled while CTRL is held (expand),
     // flipped while SHIFT is held (reverse).
@@ -1302,6 +1329,7 @@
     // EXPAND / no-fix paint the actual result.
     function renderDisplay() {
       if (!loaded) return;
+      if (selecting) { renderSelectView(); return; }   // region-pick mode draws its own view
       saveManual();   // keep the MANUAL state in localStorage in sync with the view
       const image = loaded.image, nW = image.naturalWidth, nH = image.naturalHeight;
       const L = computeLayout();
@@ -1413,6 +1441,82 @@
     window.addEventListener('resize', applyZoom);
     window.addEventListener('load', applyZoom);   // re-fit once CSS/layout is fully ready
     applyZoom();   // reflect the persisted zoom (sets the % label up front)
+
+    // ---- Manual region select: pick the area(s) the detector should read ----
+    // SELECT AREA enters draw mode; drag with LMB to box a clear grid patch.
+    // Hold Ctrl on release to keep adding areas; release WITHOUT Ctrl runs the
+    // detector on the picked area(s). All region maths is in image-natural px.
+    function evToImage(e) {
+      const r = mapC.getBoundingClientRect();
+      const fx = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+      const fy = Math.max(0, Math.min(1, (e.clientY - r.top) / r.height));
+      return { x: fx * loaded.image.naturalWidth, y: fy * loaded.image.naturalHeight };
+    }
+    function drawSelOverlay() {
+      const dW = mapC.width, dH = mapC.height;
+      gridC.width = dW; gridC.height = dH;
+      const g = gridC.getContext('2d'); g.clearRect(0, 0, dW, dH);
+      const nW = loaded.image.naturalWidth, nH = loaded.image.naturalHeight;
+      g.lineWidth = 2; g.strokeStyle = 'rgba(252,238,10,0.9)'; g.fillStyle = 'rgba(252,238,10,0.14)';
+      (dragRect ? regions.concat([dragRect]) : regions).forEach((r) => {
+        const x = r.x / nW * dW, y = r.y / nH * dH, w = r.w / nW * dW, h = r.h / nH * dH;
+        g.fillRect(x, y, w, h); g.strokeRect(x, y, w, h);
+      });
+    }
+    function renderSelectView() {        // plain full image, so screen↔image mapping stays clean
+      const image = loaded.image, nW = image.naturalWidth, nH = image.naturalHeight;
+      const scale = Math.min(1, DISPLAY_MAX / Math.max(nW, nH));
+      const dW = Math.max(1, Math.round(nW * scale)), dH = Math.max(1, Math.round(nH * scale));
+      mapC.width = dW; mapC.height = dH;
+      mapC.getContext('2d').drawImage(image, 0, 0, dW, dH);
+      drawSelOverlay();
+      applyZoom();
+    }
+    function enterSelect() {
+      selecting = true; regions = []; dragRect = null; dragStart = null;
+      zone.classList.add('selecting');
+      syncAutoMode(); renderDisplay();
+    }
+    function exitSelect() {
+      selecting = false; regions = []; dragRect = null; dragStart = null;
+      zone.classList.remove('selecting');
+      syncAutoMode(); renderDisplay();
+    }
+    function runSelection() {
+      const picked = regions.slice();
+      selecting = false; dragRect = null; dragStart = null; regions = [];
+      if (selectBtn) selectBtn.classList.remove('active');
+      zone.classList.remove('selecting');
+      if (picked.length) {               // re-detect from the chosen area(s), back to AUTO
+        detectGrid(picked);
+        manual = false; gCols = loaded.cols; gRows = loaded.rows; offX = 0; offY = 0;
+        applyAutoFix();
+      }
+      syncAutoMode(); renderDisplay();
+    }
+    if (selectBtn) selectBtn.addEventListener('click', () => { if (!loaded) return; selecting ? exitSelect() : enterSelect(); });
+    canvasWrap.addEventListener('mousedown', (e) => {
+      if (!selecting || e.button !== 0) return;
+      e.preventDefault();
+      dragStart = evToImage(e); dragRect = { x: dragStart.x, y: dragStart.y, w: 0, h: 0 };
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (!selecting || !dragStart) return;
+      const p = evToImage(e);
+      dragRect = { x: Math.min(dragStart.x, p.x), y: Math.min(dragStart.y, p.y), w: Math.abs(p.x - dragStart.x), h: Math.abs(p.y - dragStart.y) };
+      drawSelOverlay();
+    });
+    window.addEventListener('mouseup', (e) => {
+      if (!selecting || !dragStart) return;
+      const p = evToImage(e);
+      const r = { x: Math.min(dragStart.x, p.x), y: Math.min(dragStart.y, p.y), w: Math.abs(p.x - dragStart.x), h: Math.abs(p.y - dragStart.y) };
+      dragStart = null; dragRect = null;
+      if (r.w > 4 && r.h > 4) regions.push(r);    // ignore stray clicks
+      blockZoneClick = true; setTimeout(() => { blockZoneClick = false; }, 0);   // swallow the trailing click
+      if (e.ctrlKey || e.metaKey) drawSelOverlay();   // keep adding areas
+      else runSelection();                            // release without Ctrl → run
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && selecting) exitSelect(); });
 
     // Restore the previously loaded map (re-runs analysis + overlay).
     IDB.get().then((blob) => { if (blob) load(blob, false); }).catch(() => {});

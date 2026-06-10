@@ -5,8 +5,8 @@ Items are removed from the list once they are implemented / resolved (no archive
 
 ## BIG (Y version bump)
 
-1. Manually choose an area(s) to analyze
+
 
 ## SMALL (Z version bump)
 
-1. Update icon to be [M]
+1. Update preview png

@@ -1,4 +1,4 @@
-<!-- GRIDMAP v0.2.0 -->
+<!-- GRIDMAP v0.2.1 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -220,7 +220,7 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.2.0</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.2.1</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
@@ -325,7 +325,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v0.2.0';
+    const VER = ' // v0.2.1';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 
@@ -483,6 +483,36 @@
   // exposed for tests / future modules
   window.GridmapDetect = { analyzeImageData, CONF_T };
 
+  // ---- Persistence: keep the last loaded map across reloads (IndexedDB) ----
+  // One slot ('current') holding the source image Blob; on load we restore it
+  // and re-run analysis. Wrapped in try/catch so a blocked IDB never breaks
+  // the app (it just won't persist).
+  const IDB = (function () {
+    const NAME = 'gridmap', STORE = 'map', KEY = 'current';
+    function open() {
+      return new Promise((res, rej) => {
+        let r;
+        try { r = indexedDB.open(NAME, 1); } catch (e) { return rej(e); }
+        r.onupgradeneeded = () => r.result.createObjectStore(STORE);
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => rej(r.error);
+      });
+    }
+    function tx(mode, run) {
+      return open().then((db) => new Promise((res, rej) => {
+        const t = db.transaction(STORE, mode);
+        const rq = run(t.objectStore(STORE));
+        t.oncomplete = () => res(rq && rq.result);
+        t.onerror = t.onabort = () => rej(t.error);
+      }));
+    }
+    return {
+      put: (blob) => tx('readwrite', (s) => s.put(blob, KEY)),
+      get: () => tx('readonly', (s) => s.get(KEY)),
+      clear: () => tx('readwrite', (s) => s.delete(KEY)),
+    };
+  })();
+
   // ---- Working-area image import + analysis (drag-drop / paste / click) ----
   (function setupImport() {
     const zone = $('dropzone'), mapC = $('mapCanvas'), gridC = $('gridCanvas'),
@@ -543,9 +573,12 @@
       zone.classList.add('has-image');
     }
 
-    function load(file) {
-      if (!file || !file.type.startsWith('image/')) return;
-      const url = URL.createObjectURL(file);
+    // persist !== false → a fresh user import, so save it to IndexedDB.
+    // (Restoring a saved map passes persist=false to avoid a redundant write.)
+    function load(blob, persist) {
+      if (!blob || !(blob.type || '').startsWith('image/')) return;
+      if (persist !== false) IDB.put(blob).catch(() => {});
+      const url = URL.createObjectURL(blob);
       const image = new Image();
       image.onload = () => { URL.revokeObjectURL(url); onImage(image); };
       image.src = url;
@@ -563,6 +596,9 @@
       const item = [...(e.clipboardData.items || [])].find((i) => i.type.startsWith('image/'));
       if (item) load(item.getAsFile());
     });
+
+    // Restore the previously loaded map (re-runs analysis + overlay).
+    IDB.get().then((blob) => { if (blob) load(blob, false); }).catch(() => {});
   })();
 })();
 </script>

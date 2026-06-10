@@ -1,4 +1,4 @@
-<!-- GRIDMAP v0.2.8 -->
+<!-- GRIDMAP v0.2.9 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -277,7 +277,7 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.2.8</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.2.9</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
@@ -403,7 +403,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v0.2.8';
+    const VER = ' // v0.2.9';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 
@@ -908,27 +908,57 @@
       return { w, h };
     }
 
-    // Live preview: paint the edge-fixed result + grid overlay + size readout.
-    function renderDisplay() {
-      if (!loaded) return;
-      const L = computeLayout();
-      const scale = Math.min(1, DISPLAY_MAX / Math.max(L.outW, L.outH));
-      const { w: dW, h: dH } = paint(mapC, L, scale);
+    // Grid overlay (hover layer) for a given line geometry, sized dW×dH.
+    function drawGrid(vFrac, vOff, hFrac, hOff, dW, dH) {
       gridC.width = dW; gridC.height = dH;
       const g = gridC.getContext('2d');
       g.clearRect(0, 0, dW, dH);
       g.lineWidth = 1;
       g.strokeStyle = loaded.estimated ? 'rgba(0,240,255,0.75)' : 'rgba(252,238,10,0.85)';
       g.beginPath();
-      for (let f = L.vOff % L.vFrac; f <= 1.0001; f += L.vFrac) { const x = Math.round(f * dW) + 0.5; g.moveTo(x, 0); g.lineTo(x, dH); }
-      for (let f = L.hOff % L.hFrac; f <= 1.0001; f += L.hFrac) { const y = Math.round(f * dH) + 0.5; g.moveTo(0, y); g.lineTo(dW, y); }
+      for (let f = vOff % vFrac; f <= 1.0001; f += vFrac) { const x = Math.round(f * dW) + 0.5; g.moveTo(x, 0); g.lineTo(x, dH); }
+      for (let f = hOff % hFrac; f <= 1.0001; f += hFrac) { const y = Math.round(f * dH) + 0.5; g.moveTo(0, y); g.lineTo(dW, y); }
       g.stroke();
-      if (gridSize) {
-        gridSize.textContent = (loaded.estimated ? '≈ ' : '') + L.cols + ' × ' + L.rows;
-        gridSize.classList.toggle('estimated', loaded.estimated);
-        gridSize.title = (loaded.estimated ? 'estimated (no clear grid found)' : 'detected grid')
-          + ' — confidence ' + (loaded.confidence || 0).toFixed(2) + (fixEdges ? ' · ' + edgeMode : '');
+    }
+    function setReadout(cols, rows) {
+      if (!gridSize) return;
+      gridSize.textContent = (loaded.estimated ? '≈ ' : '') + cols + ' × ' + rows;
+      gridSize.classList.toggle('estimated', loaded.estimated);
+      gridSize.title = (loaded.estimated ? 'estimated (no clear grid found)' : 'detected grid')
+        + ' — confidence ' + (loaded.confidence || 0).toFixed(2) + (fixEdges ? ' · ' + edgeMode : '');
+    }
+
+    // Live preview. CROP mode is special: show the FULL image with the
+    // cropped-away margins greyed out and a bright delimiter around the kept
+    // region (the PNG export still outputs just the cropped whole-cell area).
+    // EXPAND / no-fix paint the actual result.
+    function renderDisplay() {
+      if (!loaded) return;
+      const image = loaded.image, nW = image.naturalWidth, nH = image.naturalHeight;
+      const L = computeLayout();
+      if (fixEdges && edgeMode === 'crop' && L.src) {
+        const scale = Math.min(1, DISPLAY_MAX / Math.max(nW, nH));
+        const dW = Math.max(1, Math.round(nW * scale)), dH = Math.max(1, Math.round(nH * scale));
+        mapC.width = dW; mapC.height = dH;
+        const ctx = mapC.getContext('2d');
+        ctx.drawImage(image, 0, 0, dW, dH);
+        const kx = L.src.x * scale, ky = L.src.y * scale, kw = L.src.w * scale, kh = L.src.h * scale;
+        ctx.fillStyle = 'rgba(8,8,10,0.64)';      // grey out the cropped margins
+        ctx.fillRect(0, 0, dW, ky);
+        ctx.fillRect(0, ky + kh, dW, dH - (ky + kh));
+        ctx.fillRect(0, ky, kx, kh);
+        ctx.fillRect(kx + kw, ky, dW - (kx + kw), kh);
+        ctx.strokeStyle = 'rgba(0,240,255,0.95)'; // crop delimiter (kept region)
+        ctx.lineWidth = 2;
+        ctx.strokeRect(kx, ky, kw, kh);
+        drawGrid(loaded.vFrac, loaded.vOff, loaded.hFrac, loaded.hOff, dW, dH);
+        setReadout(L.cols, L.rows);
+        return;
       }
+      const scale = Math.min(1, DISPLAY_MAX / Math.max(L.outW, L.outH));
+      const { w: dW, h: dH } = paint(mapC, L, scale);
+      drawGrid(L.vFrac, L.vOff, L.hFrac, L.hOff, dW, dH);
+      setReadout(L.cols, L.rows);
     }
 
     // PNG export = the same layout at full resolution.

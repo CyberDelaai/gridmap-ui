@@ -1,4 +1,4 @@
-<!-- GRIDMAP v0.2.6 -->
+<!-- GRIDMAP v0.2.7 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -275,7 +275,7 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.2.6</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.2.7</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
@@ -401,7 +401,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v0.2.6';
+    const VER = ' // v0.2.7';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 
@@ -698,6 +698,25 @@
       //    (so it reflects the live crop/expand/fill settings, not just export)
       loaded = { image, cols, rows, vFrac, vOff, hFrac, hOff, estimated, confidence: res.confidence };
       autoFill = edgeColor(image);   // detected primary colour for the fill swatch
+
+      // Smart default per import: a DETECTED grid with partial edge cells →
+      // FIX EDGES on + CROP + the detected primary as fill (a clean whole-cell
+      // export is one click away). Nothing to crop (edge-aligned grid, or an
+      // estimate) → FIX EDGES off.
+      let partial = false;
+      if (res.detected) {
+        const cw = vFrac * nW, ch = hFrac * nH, ox = vOff * nW, oy = hOff * nH;
+        const nc = Math.floor((nW - ox) / cw + 1e-6), nr = Math.floor((nH - oy) / ch + 1e-6);
+        partial = ox > 1 || oy > 1 || (nW - (ox + nc * cw)) > 1 || (nH - (oy + nr * ch)) > 1;
+      }
+      fixEdges = partial;
+      save('gridmap:fixEdges', partial ? '1' : '0');
+      if (partial) {
+        edgeMode = 'crop'; save('gridmap:edgeMode', 'crop');
+        fillOverride = ''; try { localStorage.removeItem('gridmap:fillColor'); } catch (e) {}
+      }
+      syncToggles();
+
       refreshFill();
       zone.classList.add('has-image');
       if (exportBtn) exportBtn.disabled = false;

@@ -1,4 +1,4 @@
-<!-- GRIDMAP v0.3.0 -->
+<!-- GRIDMAP v0.3.1 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -285,7 +285,20 @@
   .dropzone .placeholder { padding: 24px; font-size: 14px; letter-spacing: 1px; line-height: 1.8; }
   .dropzone .placeholder b { color: var(--main); }
   .dropzone .canvas-wrap { position: relative; display: none; line-height: 0; }
-  .dropzone .canvas-wrap canvas { display: block; max-width: 100%; max-height: 78vh; }
+  .dropzone .canvas-wrap canvas { display: block; }   /* display size is driven by the zoom control */
+  /* zoom control below the map view */
+  .zoom-bar { align-self: center; display: flex; align-items: center; gap: 10px; }
+  .zoom-btn {
+    width: 34px; height: 30px; display: inline-flex; align-items: center; justify-content: center;
+    background: var(--panel); color: var(--main); cursor: pointer;
+    border: 1px solid rgba(var(--main-rgb),0.4);
+    font-family: 'JetBrains Mono', monospace; font-size: 18px; line-height: 1;
+    transition: background .12s, color .12s, border-color .12s;
+  }
+  .zoom-btn:hover { background: rgba(var(--main-rgb),0.16); color: var(--accent); border-color: var(--main); }
+  .zoom-val { min-width: 4.5ch; text-align: center; color: var(--accent); font-weight: 700; font-size: 13px; letter-spacing: 1px; }
+  .zoom-btn.reset { color: var(--accent); border-color: rgba(var(--accent-rgb),0.4); }
+  .zoom-btn.reset:hover { background: rgba(var(--accent-rgb),0.16); border-color: var(--accent); }
   /* the grid overlay sits exactly over the map and only reveals on hover */
   #gridCanvas {
     position: absolute; inset: 0; width: 100%; height: 100%;
@@ -316,7 +329,7 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.3.0</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.3.1</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
@@ -393,6 +406,12 @@
           <canvas id="gridCanvas" aria-hidden="true"></canvas>
         </div>
         <input type="file" id="fileInput" accept="image/*" hidden />
+      </div>
+      <div class="zoom-bar">
+        <button class="zoom-btn" id="zoomOut" type="button" aria-label="zoom out">−</button>
+        <span class="zoom-val" id="zoomVal">100%</span>
+        <button class="zoom-btn" id="zoomIn" type="button" aria-label="zoom in">+</button>
+        <button class="zoom-btn reset" id="zoomReset" type="button" aria-label="reset zoom to 100%" title="reset zoom to 100%">↺</button>
       </div>
     </main>
 
@@ -494,7 +513,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v0.3.0';
+    const VER = ' // v0.3.1';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 
@@ -802,6 +821,7 @@
       zone.classList.add('has-image');
       if (exportBtn) exportBtn.disabled = false;
       renderDisplay();
+      requestAnimationFrame(applyZoom);   // re-apply persisted zoom once layout has settled
     }
 
     // persist !== false → a fresh user import, so save it to IndexedDB.
@@ -839,11 +859,14 @@
     let manual = false, winC0 = 0, winR0 = 0, winC1 = 0, winR1 = 0;   // MANUAL window, in grid-cell indices
     let gCols = 0, gRows = 0;   // current grid cell counts (NN×MM); ×2 //2 ×3 //3 rescale these
     let offX = 0, offY = 0;     // grid-origin nudge from the top-left (image px, sub-cell)
+    let zoom = 100;             // map-view scale, 10..300 (% of the fit-to-view size)
     try {
       fixEdges = localStorage.getItem('gridmap:fixEdges') === '1';
       if (localStorage.getItem('gridmap:edgeMode') === 'expand') edgeMode = 'expand';
       if (localStorage.getItem('gridmap:fillMode') === 'solid') fillMode = 'solid';
       fillOverride = toHex(localStorage.getItem('gridmap:fillColor') || '');
+      const z = parseInt(localStorage.getItem('gridmap:zoom'), 10);
+      if (Number.isFinite(z)) zoom = Math.min(300, Math.max(10, z));
     } catch (e) { /* storage blocked */ }
     const save = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 
@@ -1270,6 +1293,7 @@
       if (offXVal) offXVal.textContent = Math.round(offX);
       if (offYVal) offYVal.textContent = Math.round(offY);
       syncFactorButtons();   // refresh ÷ availability for the new grid size
+      applyZoom();           // re-fit the on-screen map to the current zoom
     }
 
     // Live preview. CROP mode is special: show the FULL image with the
@@ -1357,6 +1381,38 @@
         setTimeout(() => { exportBtn.textContent = prev; }, 1400);
       }, 'image/png');
     });
+
+    // ---- Map-view zoom (display only — never affects detection or the export) ----
+    // The on-screen map fills the view at 100% and scales 10..300% from there;
+    // click steps by 10%, press-and-hold sweeps the range; ↺ resets to 100%.
+    const zoomIn = $('zoomIn'), zoomOut = $('zoomOut'), zoomVal = $('zoomVal'), zoomReset = $('zoomReset');
+    function applyZoom() {
+      if (zoomVal) zoomVal.textContent = zoom + '%';
+      if (!loaded || !mapC.width || !zone.clientWidth) return;
+      const fit = Math.min((zone.clientWidth - 8) / mapC.width, (zone.clientHeight - 8) / mapC.height) || 1;
+      const s = Math.max(0.02, fit * zoom / 100);
+      mapC.style.width = Math.round(mapC.width * s) + 'px';
+      mapC.style.height = Math.round(mapC.height * s) + 'px';
+    }
+    function setZoom(z) {
+      zoom = Math.min(300, Math.max(10, Math.round(z)));
+      save('gridmap:zoom', zoom);
+      applyZoom();
+    }
+    function bindZoom(btn, delta) {
+      if (!btn) return;
+      btn.addEventListener('click', () => setZoom(zoom + delta));
+      let to = null, iv = null;
+      const stop = () => { clearTimeout(to); clearInterval(iv); to = iv = null; };
+      btn.addEventListener('mousedown', () => { stop(); to = setTimeout(() => { iv = setInterval(() => setZoom(zoom + delta), 45); }, 350); });
+      ['mouseup', 'mouseleave', 'blur'].forEach((ev) => btn.addEventListener(ev, stop));
+    }
+    bindZoom(zoomIn, 10);
+    bindZoom(zoomOut, -10);
+    if (zoomReset) zoomReset.addEventListener('click', () => setZoom(100));
+    window.addEventListener('resize', applyZoom);
+    window.addEventListener('load', applyZoom);   // re-fit once CSS/layout is fully ready
+    applyZoom();   // reflect the persisted zoom (sets the % label up front)
 
     // Restore the previously loaded map (re-runs analysis + overlay).
     IDB.get().then((blob) => { if (blob) load(blob, false); }).catch(() => {});

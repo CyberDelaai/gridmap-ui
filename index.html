@@ -1,4 +1,4 @@
-<!-- GRIDMAP v0.2.7 -->
+<!-- GRIDMAP v0.2.8 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -203,20 +203,22 @@
   .side-switch[data-pos="right"] .lab.r { color: var(--main); }
   .fx-toggle.disabled { opacity: .4; pointer-events: none; }
   /* fill-colour swatch: a clickable augmented-ui rectangle hiding a colour input */
-  .fill-group { display: flex; align-items: center; gap: 6px; }
-  .fill-swatch {
-    width: 80px; height: 30px; cursor: pointer; border: none; padding: 0;
-    --aug-border-all: 1px; --aug-border-bg: rgba(255, 255, 255, 0.55);
+  /* same footprint as a .side-switch toggle (112px); the two mode buttons
+     split it evenly so the fill control lines up with the toggles above it */
+  .fill-group { display: flex; align-items: center; gap: 6px; width: 112px; }
+  .fill-swatch, .fill-vibrant {
+    flex: 1; height: 30px; cursor: pointer; border: none; padding: 0;
+    --aug-border-all: 1px; --aug-border-bg: rgba(255, 255, 255, 0.3);
     --aug-tl: 8px; --aug-br: 8px;
   }
+  /* VIBRANT fill mode: a radial rainbow gradient button (left of the swatch) */
+  .fill-vibrant {
+    background: radial-gradient(circle at 32% 30%, #ff3d81 0%, #ff9e00 30%, #ffe600 48%, #2bd9a0 66%, #38a8ff 82%, #b15cff 100%);
+  }
+  /* the active fill mode gets a bright border */
+  .fill-swatch.active, .fill-vibrant.active { --aug-border-bg: var(--main); }
   /* the real colour input is off-screen; the swatch opens it via showPicker() */
   .fill-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
-  .fill-reset {
-    width: 28px; height: 30px; background: transparent; color: var(--dim);
-    border: 1px solid rgba(var(--main-rgb), 0.3); cursor: pointer; font-size: 14px; line-height: 1;
-    transition: color .12s, border-color .12s;
-  }
-  .fill-reset:hover { color: var(--main); border-color: var(--main); }
   .workspace { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
   /* NN x MM size readout on top of the working area */
   .size-readout {
@@ -275,7 +277,7 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.2.7</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.2.8</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
@@ -322,8 +324,8 @@
       <div class="fx-toggle" id="fillRow">
         <span class="fx-label">// FILL:</span>
         <span class="fill-group">
-          <button class="fill-swatch" id="fillSwatch" type="button" data-augmented-ui="tl-clip br-clip border" title="partial-cell fill colour — click to pick"></button>
-          <button class="fill-reset" id="fillReset" type="button" title="reset to detected colour">↺</button>
+          <button class="fill-vibrant" id="fillVibrant" type="button" data-augmented-ui="tl-clip br-clip border" title="vibrant fill — extend the nearest edge into the padding"></button>
+          <button class="fill-swatch" id="fillSwatch" type="button" data-augmented-ui="tl-clip br-clip border" title="solid fill colour — click to pick (eyedropper)"></button>
           <input type="color" id="fillColor" class="fill-input" aria-label="fill colour" />
         </span>
       </div>
@@ -401,7 +403,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v0.2.7';
+    const VER = ' // v0.2.8';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 
@@ -749,11 +751,13 @@
 
     // ---- Export settings: edge-fix toggles + fill colour (all persisted) ----
     const fixEdgesToggle = $('fixEdgesToggle'), modeToggle = $('modeToggle'), modeRow = $('modeRow'),
-      fillRow = $('fillRow'), fillSwatch = $('fillSwatch'), fillColor = $('fillColor'), fillReset = $('fillReset');
-    let fixEdges = false, edgeMode = 'crop', fillOverride = '';
+      fillRow = $('fillRow'), fillSwatch = $('fillSwatch'), fillVibrant = $('fillVibrant'),
+      fillColor = $('fillColor');
+    let fixEdges = false, edgeMode = 'crop', fillOverride = '', fillMode = 'vibrant';
     try {
       fixEdges = localStorage.getItem('gridmap:fixEdges') === '1';
       if (localStorage.getItem('gridmap:edgeMode') === 'expand') edgeMode = 'expand';
+      if (localStorage.getItem('gridmap:fillMode') === 'solid') fillMode = 'solid';
       fillOverride = toHex(localStorage.getItem('gridmap:fillColor') || '');
     } catch (e) { /* storage blocked */ }
     const save = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
@@ -812,10 +816,19 @@
       if (!hex) return;
       fillOverride = hex; save('gridmap:fillColor', hex); refreshFill(); renderDisplay();
     }
-    // The swatch is a PIPETTE: sample any on-screen pixel (incl. the loaded
-    // map) with the EyeDropper API — a magnifier that returns the exact pixel
-    // colour. Falls back to the native colour input where EyeDropper is absent.
+    // Fill-mode selector: the radial-gradient button = VIBRANT (extend the
+    // nearest edge into the padding); the colour swatch = SOLID. Active = bright border.
+    function syncFillMode() {
+      if (fillSwatch) fillSwatch.classList.toggle('active', fillMode === 'solid');
+      if (fillVibrant) fillVibrant.classList.toggle('active', fillMode === 'vibrant');
+    }
+    if (fillVibrant) fillVibrant.addEventListener('click', () => {
+      fillMode = 'vibrant'; save('gridmap:fillMode', 'vibrant'); syncFillMode(); renderDisplay();
+    });
+    // The swatch selects SOLID mode and opens the eyedropper (sample any
+    // on-screen pixel, incl. the map). Falls back to the native colour input.
     if (fillSwatch) fillSwatch.addEventListener('click', async () => {
+      fillMode = 'solid'; save('gridmap:fillMode', 'solid'); syncFillMode(); renderDisplay();
       if (window.EyeDropper) {
         try { const r = await new EyeDropper().open(); setFill(r.sRGBHex); } catch (e) { /* cancelled */ }
         return;
@@ -824,12 +837,9 @@
       if (fillColor) fillColor.click();
     });
     ['input', 'change'].forEach((ev) => fillColor && fillColor.addEventListener(ev, () => setFill(fillColor.value)));
-    if (fillReset) fillReset.addEventListener('click', () => {
-      fillOverride = ''; try { localStorage.removeItem('gridmap:fillColor'); } catch (e) {}
-      refreshFill(); renderDisplay();
-    });
     syncToggles();
     refreshFill();
+    syncFillMode();
 
     // ---- Result layout: how the edge-fix reshapes the map. Shared by the
     // on-canvas preview AND the PNG export so they always match. Returns
@@ -857,7 +867,7 @@
       const topPad = offY > 0.5 ? cellH - offY : 0, botPad = bPart > 0.5 ? cellH - bPart : 0;
       const eCols = nCols + (leftPad > 0 ? 1 : 0) + (rightPad > 0 ? 1 : 0);
       const eRows = nRows + (topPad > 0 ? 1 : 0) + (botPad > 0 ? 1 : 0);
-      return { outW: Math.round(eCols * cellW), outH: Math.round(eRows * cellH),
+      return { outW: Math.round(eCols * cellW), outH: Math.round(eRows * cellH), expand: true,
                src: null, dx: Math.round(leftPad), dy: Math.round(topPad), fill: fillValue(),
                cols: eCols, rows: eRows, vFrac: 1 / eCols, vOff: 0, hFrac: 1 / eRows, hOff: 0 };
     }
@@ -868,7 +878,31 @@
       const w = Math.max(1, Math.round(L.outW * scale)), h = Math.max(1, Math.round(L.outH * scale));
       canvas.width = w; canvas.height = h;
       const ctx = canvas.getContext('2d');
-      if (L.fill) { ctx.fillStyle = L.fill; ctx.fillRect(0, 0, w, h); }
+      if (L.expand) {
+        const dx = Math.round(L.dx * scale), dy = Math.round(L.dy * scale);
+        const iw = Math.round(nW * scale), ih = Math.round(nH * scale);
+        const rp = w - (dx + iw), bp = h - (dy + ih);
+        if (fillMode === 'vibrant') {
+          // VIBRANT: extend the nearest edge pixels into each pad region, BLURRED
+          // and overscanned beyond the canvas (margin m) so the padding reads as
+          // a soft continuation of the edge — no hard streaks, no transparent rim.
+          const blur = Math.max(3, Math.round(Math.min(w, h) * 0.025)), m = blur * 2;
+          ctx.filter = 'blur(' + blur + 'px)';
+          if (dx > 0) ctx.drawImage(image, 0, 0, 1, nH, -m, dy, dx + m, ih);                  // left
+          if (rp > 0) ctx.drawImage(image, nW - 1, 0, 1, nH, dx + iw, dy, rp + m, ih);        // right
+          if (dy > 0) ctx.drawImage(image, 0, 0, nW, 1, dx, -m, iw, dy + m);                  // top
+          if (bp > 0) ctx.drawImage(image, 0, nH - 1, nW, 1, dx, dy + ih, iw, bp + m);        // bottom
+          if (dx > 0 && dy > 0) ctx.drawImage(image, 0, 0, 1, 1, -m, -m, dx + m, dy + m);                       // TL
+          if (rp > 0 && dy > 0) ctx.drawImage(image, nW - 1, 0, 1, 1, dx + iw, -m, rp + m, dy + m);             // TR
+          if (dx > 0 && bp > 0) ctx.drawImage(image, 0, nH - 1, 1, 1, -m, dy + ih, dx + m, bp + m);             // BL
+          if (rp > 0 && bp > 0) ctx.drawImage(image, nW - 1, nH - 1, 1, 1, dx + iw, dy + ih, rp + m, bp + m);   // BR
+          ctx.filter = 'none';
+        } else if (L.fill) {
+          ctx.fillStyle = L.fill; ctx.fillRect(0, 0, w, h);
+        }
+        ctx.drawImage(image, 0, 0, nW, nH, dx, dy, iw, ih);
+        return { w, h };
+      }
       if (L.src) ctx.drawImage(image, L.src.x, L.src.y, L.src.w, L.src.h, 0, 0, w, h);
       else ctx.drawImage(image, 0, 0, nW, nH, Math.round(L.dx * scale), Math.round(L.dy * scale), Math.round(nW * scale), Math.round(nH * scale));
       return { w, h };

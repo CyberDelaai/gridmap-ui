@@ -1,0 +1,387 @@
+<!-- GRIDMAP v0.1.0 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GRIDMAP — Cyberpunk Battle-Map Grid Detector</title>
+<meta name="description" content="GRIDMAP is a free in-browser tool that detects the grid on any battle-map image and reports its size (e.g. 23×54). Drop in a map; if it has no visible grid, GRIDMAP estimates the best cell count. Export a clean PNG cropped to whole cells — built for TTRPG game masters prepping maps for virtual tabletops." />
+<meta name="keywords" content="cyberpunk, battle map, grid, grid detector, map grid size, square counter, cell counter, vtt, roll20, foundry vtt, ttrpg, gm tools, cyberpunk 2077, shadowrun, png export, map analyzer" />
+<meta name="author" content="CyberDelaai" />
+<meta name="robots" content="index, follow" />
+<meta name="theme-color" content="#050507" />
+<link rel="canonical" href="https://cyberdeck.tools/gridmap-ui/" />
+<!-- SVG-first: modern browsers use the SVG for the tab; .ico is the fallback -->
+<link rel="icon" href="favicon.ico" sizes="32x32" />
+<link rel="icon" type="image/svg+xml" href="favicon.svg" />
+<link rel="apple-touch-icon" href="favicon-192.png" />
+
+<!-- Open Graph / Twitter -->
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="GRIDMAP" />
+<meta property="og:title" content="GRIDMAP — Cyberpunk Battle-Map Grid Detector" />
+<meta property="og:description" content="Detect the grid on any battle-map image and read its NxM size in your browser. Crop to whole cells and export a clean PNG. Perfect for TTRPG VTT prep." />
+<meta property="og:url" content="https://cyberdeck.tools/gridmap-ui/" />
+<meta property="og:image" content="https://cyberdeck.tools/gridmap-ui/og-preview.png" />
+<meta property="og:image:type" content="image/png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="GRIDMAP — cyberpunk battle-map grid detector preview" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="GRIDMAP — Cyberpunk Battle-Map Grid Detector" />
+<meta name="twitter:description" content="Detect a battle map's grid, read its NxM size, crop to whole cells, and export a clean PNG." />
+<meta name="twitter:image" content="https://cyberdeck.tools/gridmap-ui/og-preview.png" />
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "GRIDMAP",
+  "alternateName": "GRIDMAP Grid Detector",
+  "description": "Cyberpunk Battle-Map Grid Detector — analyze a battle-/region-map image in the browser to detect its grid and report the cell count (NxM). Estimates the grid when none is visible, crops partial outer cells, and exports a clean PNG. Useful for TTRPG game masters running Shadowrun, Cyberpunk 2020, or Cyberpunk RED who prep maps for virtual tabletops.",
+  "applicationCategory": "UtilitiesApplication",
+  "applicationSubCategory": "Map Grid Detector",
+  "operatingSystem": "Any (browser-based)",
+  "browserRequirements": "Modern desktop browser",
+  "url": "https://cyberdeck.tools/gridmap-ui/",
+  "image": "https://raw.githubusercontent.com/CyberDelaai/gridmap-ui/main/og-preview.png",
+  "keywords": "cyberpunk, battle map, grid detector, map grid size, vtt, roll20, foundry vtt, ttrpg, game master tools, png export, netrunner",
+  "author": {
+    "@type": "Person",
+    "name": "CyberDelaai"
+  },
+  "license": "https://opensource.org/licenses/MIT",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  }
+}
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://unpkg.com/augmented-ui@2/augmented-ui.min.css" />
+
+<style>
+  :root {
+    --yellow: #fcee0a;
+    --cyan: #00f0ff;
+    --magenta: #ff003c;
+    --bg: #050507;
+    --panel: #0b0b10;
+    --panel-2: #14141c;
+    --text: #e8e8ee;
+    --dim: #7a7a88;
+    --accent: #fcee0a;
+    --accent-rgb: 252,238,10;
+    --main: #00f0ff;
+    --main-rgb: 0,240,255;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    min-height: 100vh;
+    padding: 28px 18px 64px;
+    background-image: repeating-linear-gradient(0deg, rgba(var(--main-rgb),0.03) 0 1px, transparent 1px 3px);
+  }
+  .app { max-width: 1560px; margin: 0 auto; }
+
+  /* ---------- Header (ported from chronos/commlink) ---------- */
+  header.top {
+    display: flex; align-items: center; gap: 18px;
+    border-bottom: 1px solid rgba(252,238,10,0.25); padding-bottom: 16px; margin-bottom: 22px;
+  }
+  .logo-menu { position: relative; }
+  .logo {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--yellow); font-size: 22px; letter-spacing: 2px; font-weight: 700;
+    background: none; border: none; cursor: pointer; transition: filter .15s;
+  }
+  .logo:hover { filter: drop-shadow(0 0 6px rgba(var(--accent-rgb),0.6)); }
+  .logo .chev { display: inline-block; transition: transform .2s ease; }
+  .logo[aria-expanded="true"] .chev { transform: rotate(90deg); }
+  .tag {
+    color: var(--cyan); font-size: 12px; letter-spacing: 1px;
+    border-left: 1px solid var(--dim); padding-left: 18px;
+  }
+  .tag .tag-meta { cursor: default; color: var(--cyan); }
+  .lang-select {
+    background: var(--panel); color: var(--main);
+    border: 1px solid rgba(var(--main-rgb),0.4);
+    padding: 6px 10px; font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; cursor: pointer;
+  }
+  header.top .lang-select { margin-left: auto; }
+  .app-menu {
+    position: absolute; top: calc(100% + 12px); left: 0; z-index: 30;
+    display: flex; flex-direction: column; gap: 4px;
+    min-width: 240px; padding: 12px 14px;
+    background: var(--panel);
+    --aug-border-all: 1px; --aug-border-bg: rgba(var(--main-rgb),0.5);
+    --aug-tl: 10px; --aug-br: 10px;
+  }
+  .app-menu[hidden] { display: none; }
+  .app-menu-item {
+    font-size: 16px; letter-spacing: 2px;
+    color: var(--yellow); text-decoration: none; white-space: nowrap;
+    padding: 6px 8px; transition: color .12s, background .12s;
+  }
+  .app-menu-item:hover { background: rgba(var(--main-rgb),0.12); color: var(--accent); }
+  .app-menu-item.current { color: var(--main); cursor: default; }
+  .app-menu-item.current:hover { background: none; }
+  .glitchable { display: inline-block; white-space: pre; }
+  .glitchable.glitching {
+    color: var(--yellow);
+    text-shadow: 2px 0 var(--cyan), -2px 0 var(--magenta);
+    animation: tagGlitchJitter 0.08s steps(2) infinite;
+  }
+  @keyframes tagGlitchJitter {
+    0%, 100% { transform: translate(0, 0); }
+    25% { transform: translate(-1px, 1px); }
+    50% { transform: translate(1px, -1px); }
+    75% { transform: translate(-1px, -1px); }
+  }
+
+  /* ---------- Layout: config left + right, working area center ---------- */
+  .layout { display: flex; gap: 22px; align-items: stretch; }
+  .config {
+    width: 260px; flex-shrink: 0; padding: 16px 16px 22px;
+    background: var(--panel);
+    --aug-border-all: 1px; --aug-border-bg: rgba(var(--main-rgb),0.35);
+    --aug-tl: 12px; --aug-br: 12px;
+    align-self: flex-start;
+  }
+  .config h2 {
+    font-size: 13px; letter-spacing: 2px; color: var(--dim);
+    text-transform: uppercase; font-weight: 700; margin-bottom: 12px;
+  }
+  .config .hint { color: var(--dim); font-size: 12px; line-height: 1.6; }
+  .workspace { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+  /* NN x MM size readout on top of the working area */
+  .size-readout {
+    align-self: center;
+    font-size: 26px; letter-spacing: 4px; font-weight: 700;
+    color: var(--accent); text-shadow: 0 0 14px rgba(var(--accent-rgb),0.4);
+    padding: 6px 22px;
+    --aug-border-all: 1px; --aug-border-bg: rgba(var(--accent-rgb),0.5);
+    --aug-tl: 8px; --aug-br: 8px;
+    background: rgba(0,0,0,0.35);
+  }
+  /* central drop zone / map canvas */
+  .dropzone {
+    flex: 1; min-height: 440px; position: relative;
+    display: flex; align-items: center; justify-content: center;
+    border: 2px dashed rgba(var(--main-rgb),0.35);
+    background: repeating-linear-gradient(45deg, rgba(var(--main-rgb),0.03) 0 12px, transparent 12px 24px);
+    color: var(--dim); text-align: center; transition: border-color .15s, background .15s;
+    overflow: hidden;
+  }
+  .dropzone.dragover { border-color: var(--accent); background: rgba(var(--accent-rgb),0.06); }
+  .dropzone .placeholder { padding: 24px; font-size: 14px; letter-spacing: 1px; line-height: 1.8; }
+  .dropzone .placeholder b { color: var(--main); }
+  .dropzone img { max-width: 100%; max-height: 78vh; display: none; }
+  .dropzone.has-image { border-style: solid; border-color: rgba(var(--main-rgb),0.5); background: #000; }
+  .dropzone.has-image .placeholder { display: none; }
+  .dropzone.has-image img { display: block; }
+
+  @media (max-width: 1100px) {
+    .layout { flex-wrap: wrap; }
+    .config { width: 100%; }
+    .workspace { order: -1; width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <h1 class="sr-only">GRIDMAP — cyberpunk battle-map grid detector with PNG export</h1>
+    <div class="logo-menu">
+      <button class="logo" id="logoBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="appMenu"><span class="chev" aria-hidden="true">&gt;</span> GRIDMAP_</button>
+      <nav class="app-menu" id="appMenu" data-augmented-ui="tl-clip br-clip border" aria-label="cyberdeck.tools navigation" hidden>
+        <a class="app-menu-item" href="https://cyberdeck.tools/">/ CYBERDECK_TOOLS</a>
+        <a class="app-menu-item" href="https://cyberdeck.tools/commlink-ui/">&gt; COMMLINK_</a>
+        <a class="app-menu-item" href="https://cyberdeck.tools/chronos-ui/">&gt; CHRONOS_</a>
+        <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
+      </nav>
+    </div>
+    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.1.0</span></span></div>
+    <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
+  </header>
+
+  <div class="layout">
+    <!-- LEFT config (source / detection settings — TODO) -->
+    <aside class="config config-left" data-augmented-ui="tl-clip br-clip border">
+      <h2>// SOURCE</h2>
+      <p class="hint">Detection controls land here — line sensitivity, manual grid override, origin nudge.</p>
+    </aside>
+
+    <!-- CENTER working area -->
+    <main class="workspace">
+      <div class="size-readout" id="gridSize">?? &times; ??</div>
+      <div class="dropzone" id="dropzone" aria-label="drop a map image">
+        <div class="placeholder">
+          <b>DROP A MAP IMAGE HERE</b><br />
+          drag &amp; drop · paste · or click to browse<br />
+          GRIDMAP reads the grid and reports its <b>NN&times;MM</b> size
+        </div>
+        <img id="mapImg" alt="loaded map" />
+        <input type="file" id="fileInput" accept="image/*" hidden />
+      </div>
+    </main>
+
+    <!-- RIGHT config (export — TODO) -->
+    <aside class="config config-right" data-augmented-ui="tl-clip br-clip border">
+      <h2>// EXPORT</h2>
+      <p class="hint">Crop-to-whole-cells &amp; PNG export land here. Output is named with its NNxMM size.</p>
+    </aside>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+
+  // ---- Logo tool-switcher dropdown (ported from chronos/commlink) ----
+  (function setupAppMenu() {
+    const btn = $('logoBtn'), menu = $('appMenu');
+    if (!btn || !menu) return;
+    const open = () => { menu.hidden = false; btn.setAttribute('aria-expanded', 'true'); };
+    const close = () => { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); };
+    btn.addEventListener('click', (e) => { e.stopPropagation(); menu.hidden ? open() : close(); });
+    document.addEventListener('click', (e) => {
+      if (!menu.hidden && !menu.contains(e.target) && e.target !== btn) close();
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+  })();
+
+  // ---- Header tag glitch: scrambles GRID MAP ANALYZER <-> COUNT THE CELLS ----
+  (function startTagGlitch() {
+    const el = $('tagWord');
+    if (!el) return;
+    const ORIGINAL = 'GRID MAP ANALYZER';
+    const TARGET = 'COUNT THE CELLS';
+    const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const maxLen = Math.max(ORIGINAL.length, TARGET.length);
+    function scrambleFrame(target, revealed) {
+      let out = '';
+      for (let i = 0; i < maxLen; i++) {
+        if (i >= target.length) { out += ' '; continue; }
+        out += i < revealed ? target[i] : CHARS[Math.floor(Math.random() * CHARS.length)];
+      }
+      return out;
+    }
+    function runScramble(target, onDone) {
+      const steps = 8; let step = 0;
+      const id = setInterval(() => {
+        step++;
+        el.textContent = scrambleFrame(target, Math.floor((step / steps) * target.length));
+        if (step >= steps) {
+          clearInterval(id);
+          el.textContent = target + ' '.repeat(maxLen - target.length);
+          onDone();
+        }
+      }, 40);
+    }
+    function runGlitch() {
+      el.classList.add('glitching');
+      runScramble(TARGET, () => {
+        setTimeout(() => {
+          runScramble(ORIGINAL, () => {
+            el.classList.remove('glitching');
+            el.textContent = ORIGINAL;
+            setTimeout(runGlitch, 14000 + Math.random() * 18000);
+          });
+        }, 700);
+      });
+    }
+    setTimeout(runGlitch, 8000 + Math.random() * 6000);
+  })();
+
+  // ---- Version hover-morph: hover " // vX" -> " // changes: N" (GitHub commits) ----
+  (function setupVersionMorph() {
+    const meta = $('tagMeta');
+    if (!meta) return;
+    const GH_REPO = 'CyberDelaai/gridmap-ui';
+    // Version lives in 3 spots: this const, the #tagVersion span above, and
+    // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
+    //   python3 bump_version.py {x|y|z}
+    const VER = ' // v0.1.0';
+    const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    let commitCount = '';
+
+    async function fetchCommitCount() {
+      const CK = 'gridmap:commitCount', CA = 'gridmap:commitCountAt', TTL = 3600000;
+      const cached = localStorage.getItem(CK);
+      const at = parseInt(localStorage.getItem(CA) || '0', 10);
+      if (cached && (Date.now() - at) < TTL) return cached;
+      try {
+        const r = await fetch('https://api.github.com/repos/' + GH_REPO + '/commits?per_page=1');
+        if (!r.ok) return cached || '';
+        const link = r.headers.get('Link');
+        const m = link && link.match(/<[^>]*[?&]page=(\d+)>;\s*rel="last"/);
+        let count = m ? m[1] : null;
+        if (!count) { const arr = await r.json().catch(() => null); if (Array.isArray(arr)) count = String(arr.length); }
+        if (count) { localStorage.setItem(CK, count); localStorage.setItem(CA, String(Date.now())); return count; }
+      } catch (e) { /* offline / blocked */ }
+      return cached || '';
+    }
+    fetchCommitCount().then((c) => { if (c) commitCount = c; });
+
+    let timer = null;
+    function morphTo(target) {
+      if (timer) { clearInterval(timer); timer = null; }
+      const maxLen = Math.max(meta.textContent.length, target.length);
+      const steps = 7; let step = 0;
+      timer = setInterval(() => {
+        step++;
+        const revealed = Math.floor((step / steps) * target.length);
+        let out = '';
+        for (let i = 0; i < maxLen; i++) {
+          if (i >= target.length) { out += ' '; continue; }
+          out += i < revealed ? target[i] : CHARS[Math.floor(Math.random() * CHARS.length)];
+        }
+        meta.textContent = out;
+        if (step >= steps) { clearInterval(timer); timer = null; meta.textContent = target; }
+      }, 28);
+    }
+    meta.addEventListener('mouseenter', () => { if (commitCount) morphTo(' // changes: ' + commitCount); });
+    meta.addEventListener('mouseleave', () => morphTo(VER));
+  })();
+
+  // ---- Working-area image import (drag-drop / paste / click) ----
+  // Loads & shows the map; grid detection + NNxMM readout + export are TODO.
+  (function setupImport() {
+    const zone = $('dropzone'), img = $('mapImg'), input = $('fileInput');
+    if (!zone || !img || !input) return;
+    function load(file) {
+      if (!file || !file.type.startsWith('image/')) return;
+      const url = URL.createObjectURL(file);
+      img.onload = () => URL.revokeObjectURL(url);
+      img.src = url;
+      zone.classList.add('has-image');
+      // TODO: run grid detection here and write `NN × MM` into #gridSize.
+    }
+    zone.addEventListener('click', () => input.click());
+    input.addEventListener('change', (e) => load(e.target.files[0]));
+    zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+    zone.addEventListener('drop', (e) => {
+      e.preventDefault(); zone.classList.remove('dragover');
+      if (e.dataTransfer.files.length) load(e.dataTransfer.files[0]);
+    });
+    window.addEventListener('paste', (e) => {
+      const item = [...(e.clipboardData.items || [])].find((i) => i.type.startsWith('image/'));
+      if (item) load(item.getAsFile());
+    });
+  })();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://cyberdeck.tools/gridmap-ui/sitemap.xml

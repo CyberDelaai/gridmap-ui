@@ -1,4 +1,4 @@
-<!-- GRIDMAP v0.2.1 -->
+<!-- GRIDMAP v0.2.2 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -220,7 +220,7 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.2.1</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.2.2</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
@@ -325,7 +325,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v0.2.1';
+    const VER = ' // v0.2.2';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 
@@ -376,11 +376,14 @@
   //      column, how line-like is it (summed over all rows), and vice-versa.
   //      A vertical grid line lights up its whole column, so real grid lines
   //      stack into evenly-spaced peaks while map content stays noise.
-  //   2. find the dominant PERIOD of each profile by autocorrelation; the
-  //      cell count is simply  axisLength / period.
-  //   3. recover the phase (where the first line sits) for the overlay.
-  //   4. if neither axis shows a confident period, fall back to estimating
-  //      from a default cell size.
+  //   2. cells are assumed SQUARE, so there is ONE pixel cell-size shared by
+  //      both axes. Find it by autocorrelation on the COMBINED (both-axis)
+  //      signal; the counts are then W/period and H/period.
+  //   3. only search periods that keep both axes within [MIN_CELLS, MAX_CELLS]
+  //      — maps with fewer than ~10 or more than ~100 cells/side are unusual.
+  //   4. recover the phase (where the first line sits) for the overlay.
+  //   5. if no confident period is found, fall back to estimating from a
+  //      default cell size.
   // The profiles run on a downscaled copy, but cell COUNT is scale-invariant
   // (length/period), so the reported numbers don't depend on the downscale.
   // =====================================================================
@@ -390,6 +393,8 @@
   const DISPLAY_MAX = 1600;    // longest side of the on-screen canvas
   const DEFAULT_CELL_PX = 70;  // fallback cell size (VTT-ish) when no grid
   const CONF_T = 0.18;         // min autocorr confidence to trust a grid
+  const MIN_CELLS = 10;        // maps under ~10 cells/side are unusual…
+  const MAX_CELLS = 100;       // …and over ~100 cells/side even more so
 
   function toLuma(data, W, H) {
     const L = new Float32Array(W * H);
@@ -414,70 +419,83 @@
     return { col, row };
   }
 
-  function detectAxis(prof, len) {
+  // Detrend a profile → zero-mean signal + variance (== autocorrelation @ lag 0).
+  function axisStats(prof, len) {
     let mean = 0;
     for (let i = 0; i < len; i++) mean += prof[i];
     mean /= len;
     const s = new Float32Array(len);
     let v0 = 0;
     for (let i = 0; i < len; i++) { s[i] = prof[i] - mean; v0 += s[i] * s[i]; }
-    v0 /= len; // variance == autocorrelation at lag 0
+    return { s, v0: v0 / len };
+  }
 
-    const lagMin = Math.max(4, Math.floor(len / 256));  // ≤256 cells
-    const lagMax = Math.floor(len / 3);                 // ≥3 cells
-    const ac = new Float32Array(lagMax + 2);
-    let peak = 0;
-    for (let lag = lagMin; lag <= lagMax; lag++) {
-      let sum = 0; const n = len - lag;
-      for (let i = 0; i < n; i++) sum += s[i] * s[i + lag];
-      ac[lag] = sum / n;
-      if (ac[lag] > peak) peak = ac[lag];
+  // Autocorrelation of a zero-mean signal at one lag (normalised by overlap).
+  function acAt(s, len, lag) {
+    let sum = 0; const n = len - lag;
+    for (let i = 0; i < n; i++) sum += s[i] * s[i + lag];
+    return sum / n;
+  }
+
+  // Phase: line offset in [0,period) whose comb hits the strongest peaks.
+  function bestPhase(prof, len, period) {
+    let o = 0, best = -Infinity;
+    for (let q = 0; q < period; q++) {
+      let sc = 0;
+      for (let x = q; x < len; x += period) sc += prof[Math.round(x)];
+      if (sc > best) { best = sc; o = q; }
     }
-    // Fundamental period = the SMALLEST-lag local maximum within 70% of the
-    // global peak (autocorrelation also peaks at 2×, 3×… the true period).
-    let period = lagMin;
-    for (let lag = lagMin + 1; lag < lagMax; lag++) {
-      if (ac[lag] >= 0.7 * peak && ac[lag] > ac[lag - 1] && ac[lag] >= ac[lag + 1]) { period = lag; break; }
-    }
-    // Phase: offset in [0,period) whose line positions hit the strongest peaks.
-    const bestPhase = (per) => {
-      let o = 0, best = -Infinity;
-      for (let q = 0; q < per; q++) {
-        let sc = 0;
-        for (let x = q; x < len; x += per) sc += prof[Math.round(x)];
-        if (sc > best) { best = sc; o = q; }
-      }
-      return o;
-    };
-    // Subharmonic refine: if HALF the period is also a strong, locally-maximal
-    // autocorrelation peak, we locked onto every other line — step down to the
-    // true fundamental. Using the autocorrelation (not raw midpoint samples)
-    // makes this robust to per-line amplitude wobble, e.g. thin lines that
-    // alias when a big image is downscaled and inflate the even/odd peak.
-    for (let guard = 0; guard < 3; guard++) {
-      const half = Math.round(period / 2);
-      if (half < lagMin) break;
-      if (ac[half] >= ac[half - 1] && ac[half] >= ac[half + 1] && ac[half] >= 0.45 * ac[period]) period = half;
-      else break;
-    }
-    const offset = bestPhase(period);
-    const cells = Math.max(1, Math.round(len / period));
-    return {
-      cells, period, offset,
-      periodFrac: period / len, offsetFrac: offset / len,
-      confidence: v0 > 0 ? peak / v0 : 0,
-    };
+    return o;
   }
 
   function analyzeImageData(img) {
     const { data, width: W, height: H } = img;
     const L = toLuma(data, W, H);
     const { col, row } = buildProfiles(L, W, H);
-    const ax = detectAxis(col, W), ay = detectAxis(row, H);
+    const cx = axisStats(col, W), cy = axisStats(row, H);
+
+    // SQUARE cells → one pixel cell-size shared by both axes. Search only the
+    // periods that keep BOTH axes within [MIN_CELLS, MAX_CELLS]:
+    //   longer side ≤ MAX_CELLS  ⇒  period ≥ max(W,H)/MAX_CELLS
+    //   shorter side ≥ MIN_CELLS ⇒  period ≤ min(W,H)/MIN_CELLS
+    const pMin = Math.max(4, Math.ceil(Math.max(W, H) / MAX_CELLS));
+    const pMax = Math.floor(Math.min(W, H) / MIN_CELLS);
+    const fail = {
+      cols: 0, rows: 0, detected: false, confidence: 0,
+      ax: { periodFrac: 0, offsetFrac: 0 }, ay: { periodFrac: 0, offsetFrac: 0 },
+    };
+    if (pMax < pMin || cx.v0 <= 0 || cy.v0 <= 0) return fail;
+
+    // Combined, per-axis-normalised autocorrelation. Summing both axes makes a
+    // genuine square grid (a peak at the SAME lag on each axis) stand out, and
+    // stops one noisy axis from choosing a bogus period on its own.
+    const comb = new Float32Array(pMax + 2);
+    let peak = 0, period = pMin;
+    for (let lag = pMin; lag <= pMax; lag++) {
+      comb[lag] = acAt(cx.s, W, lag) / cx.v0 + acAt(cy.s, H, lag) / cy.v0;
+      if (comb[lag] > peak) { peak = comb[lag]; period = lag; }
+    }
+    // Fundamental = smallest-lag local max within 70% of the global peak.
+    for (let lag = pMin + 1; lag < pMax; lag++) {
+      if (comb[lag] >= 0.7 * peak && comb[lag] > comb[lag - 1] && comb[lag] >= comb[lag + 1]) { period = lag; break; }
+    }
+    // Subharmonic guard: if half the period is also a strong peak, we locked
+    // onto every other line — step down to the true cell size.
+    for (let guard = 0; guard < 3; guard++) {
+      const half = Math.round(period / 2);
+      if (half < pMin) break;
+      if (comb[half] >= comb[half - 1] && comb[half] >= comb[half + 1] && comb[half] >= 0.45 * comb[period]) period = half;
+      else break;
+    }
+
+    const cols = Math.max(1, Math.round(W / period));
+    const rows = Math.max(1, Math.round(H / period));
+    // Confidence requires BOTH axes to be periodic at the shared period.
+    const confidence = Math.min(acAt(cx.s, W, period) / cx.v0, acAt(cy.s, H, period) / cy.v0);
     return {
-      cols: ax.cells, rows: ay.cells, ax, ay,
-      detected: ax.confidence >= CONF_T && ay.confidence >= CONF_T,
-      confidence: Math.min(ax.confidence, ay.confidence),
+      cols, rows, detected: confidence >= CONF_T, confidence,
+      ax: { periodFrac: period / W, offsetFrac: bestPhase(col, W, period) / W },
+      ay: { periodFrac: period / H, offsetFrac: bestPhase(row, H, period) / H },
     };
   }
   // exposed for tests / future modules

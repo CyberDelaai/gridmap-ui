@@ -1,4 +1,4 @@
-<!-- GRIDMAP v0.1.0 -->
+<!-- GRIDMAP v0.2.0 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -172,7 +172,10 @@
     --aug-border-all: 1px; --aug-border-bg: rgba(var(--accent-rgb),0.5);
     --aug-tl: 8px; --aug-br: 8px;
     background: rgba(0,0,0,0.35);
+    transition: color .15s;
   }
+  /* cyan + "≈" when the count is an estimate (no clear grid detected) */
+  .size-readout.estimated { color: var(--main); --aug-border-bg: rgba(var(--main-rgb),0.5); }
   /* central drop zone / map canvas */
   .dropzone {
     flex: 1; min-height: 440px; position: relative;
@@ -185,10 +188,17 @@
   .dropzone.dragover { border-color: var(--accent); background: rgba(var(--accent-rgb),0.06); }
   .dropzone .placeholder { padding: 24px; font-size: 14px; letter-spacing: 1px; line-height: 1.8; }
   .dropzone .placeholder b { color: var(--main); }
-  .dropzone img { max-width: 100%; max-height: 78vh; display: none; }
+  .dropzone .canvas-wrap { position: relative; display: none; line-height: 0; }
+  .dropzone .canvas-wrap canvas { display: block; max-width: 100%; max-height: 78vh; }
+  /* the grid overlay sits exactly over the map and only reveals on hover */
+  #gridCanvas {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    pointer-events: none; opacity: 0; transition: opacity .15s;
+  }
+  .dropzone .canvas-wrap:hover #gridCanvas { opacity: 1; }
   .dropzone.has-image { border-style: solid; border-color: rgba(var(--main-rgb),0.5); background: #000; }
   .dropzone.has-image .placeholder { display: none; }
-  .dropzone.has-image img { display: block; }
+  .dropzone.has-image .canvas-wrap { display: inline-block; }
 
   @media (max-width: 1100px) {
     .layout { flex-wrap: wrap; }
@@ -210,7 +220,7 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.1.0</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.2.0</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
@@ -230,7 +240,10 @@
           drag &amp; drop · paste · or click to browse<br />
           GRIDMAP reads the grid and reports its <b>NN&times;MM</b> size
         </div>
-        <img id="mapImg" alt="loaded map" />
+        <div class="canvas-wrap" id="canvasWrap">
+          <canvas id="mapCanvas" aria-label="loaded map"></canvas>
+          <canvas id="gridCanvas" aria-hidden="true"></canvas>
+        </div>
         <input type="file" id="fileInput" accept="image/*" hidden />
       </div>
     </main>
@@ -312,7 +325,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v0.1.0';
+    const VER = ' // v0.2.0';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 
@@ -355,19 +368,189 @@
     meta.addEventListener('mouseleave', () => morphTo(VER));
   })();
 
-  // ---- Working-area image import (drag-drop / paste / click) ----
-  // Loads & shows the map; grid detection + NNxMM readout + export are TODO.
+  // =====================================================================
+  // GRID DETECTION
+  // ---------------------------------------------------------------------
+  // A square grid is a PERIODIC pattern of full-length lines. So:
+  //   1. reduce the image to two 1-D "line-strength" profiles — for every
+  //      column, how line-like is it (summed over all rows), and vice-versa.
+  //      A vertical grid line lights up its whole column, so real grid lines
+  //      stack into evenly-spaced peaks while map content stays noise.
+  //   2. find the dominant PERIOD of each profile by autocorrelation; the
+  //      cell count is simply  axisLength / period.
+  //   3. recover the phase (where the first line sits) for the overlay.
+  //   4. if neither axis shows a confident period, fall back to estimating
+  //      from a default cell size.
+  // The profiles run on a downscaled copy, but cell COUNT is scale-invariant
+  // (length/period), so the reported numbers don't depend on the downscale.
+  // =====================================================================
+  const ANALYSIS_MAX = 3000;   // longest side used for the analysis pass
+                               // (kept high so thin grid lines survive — they
+                               // alias/vanish under aggressive downscaling)
+  const DISPLAY_MAX = 1600;    // longest side of the on-screen canvas
+  const DEFAULT_CELL_PX = 70;  // fallback cell size (VTT-ish) when no grid
+  const CONF_T = 0.18;         // min autocorr confidence to trust a grid
+
+  function toLuma(data, W, H) {
+    const L = new Float32Array(W * H);
+    for (let i = 0, p = 0; i < L.length; i++, p += 4) {
+      L[i] = 0.299 * data[p] + 0.587 * data[p + 1] + 0.114 * data[p + 2];
+    }
+    return L;
+  }
+
+  // Per-column / per-row line strength: |center - surround| (a polarity-blind
+  // thin-line detector) accumulated along the perpendicular axis.
+  function buildProfiles(L, W, H) {
+    const col = new Float32Array(W), row = new Float32Array(H), d = 2;
+    for (let y = 0; y < H; y++) {
+      const o = y * W;
+      for (let x = d; x < W - d; x++) col[x] += Math.abs(2 * L[o + x] - L[o + x - d] - L[o + x + d]);
+    }
+    for (let y = d; y < H - d; y++) {
+      const o = y * W, om = (y - d) * W, op = (y + d) * W;
+      for (let x = 0; x < W; x++) row[y] += Math.abs(2 * L[o + x] - L[om + x] - L[op + x]);
+    }
+    return { col, row };
+  }
+
+  function detectAxis(prof, len) {
+    let mean = 0;
+    for (let i = 0; i < len; i++) mean += prof[i];
+    mean /= len;
+    const s = new Float32Array(len);
+    let v0 = 0;
+    for (let i = 0; i < len; i++) { s[i] = prof[i] - mean; v0 += s[i] * s[i]; }
+    v0 /= len; // variance == autocorrelation at lag 0
+
+    const lagMin = Math.max(4, Math.floor(len / 256));  // ≤256 cells
+    const lagMax = Math.floor(len / 3);                 // ≥3 cells
+    const ac = new Float32Array(lagMax + 2);
+    let peak = 0;
+    for (let lag = lagMin; lag <= lagMax; lag++) {
+      let sum = 0; const n = len - lag;
+      for (let i = 0; i < n; i++) sum += s[i] * s[i + lag];
+      ac[lag] = sum / n;
+      if (ac[lag] > peak) peak = ac[lag];
+    }
+    // Fundamental period = the SMALLEST-lag local maximum within 70% of the
+    // global peak (autocorrelation also peaks at 2×, 3×… the true period).
+    let period = lagMin;
+    for (let lag = lagMin + 1; lag < lagMax; lag++) {
+      if (ac[lag] >= 0.7 * peak && ac[lag] > ac[lag - 1] && ac[lag] >= ac[lag + 1]) { period = lag; break; }
+    }
+    // Phase: offset in [0,period) whose line positions hit the strongest peaks.
+    const bestPhase = (per) => {
+      let o = 0, best = -Infinity;
+      for (let q = 0; q < per; q++) {
+        let sc = 0;
+        for (let x = q; x < len; x += per) sc += prof[Math.round(x)];
+        if (sc > best) { best = sc; o = q; }
+      }
+      return o;
+    };
+    // Subharmonic refine: if HALF the period is also a strong, locally-maximal
+    // autocorrelation peak, we locked onto every other line — step down to the
+    // true fundamental. Using the autocorrelation (not raw midpoint samples)
+    // makes this robust to per-line amplitude wobble, e.g. thin lines that
+    // alias when a big image is downscaled and inflate the even/odd peak.
+    for (let guard = 0; guard < 3; guard++) {
+      const half = Math.round(period / 2);
+      if (half < lagMin) break;
+      if (ac[half] >= ac[half - 1] && ac[half] >= ac[half + 1] && ac[half] >= 0.45 * ac[period]) period = half;
+      else break;
+    }
+    const offset = bestPhase(period);
+    const cells = Math.max(1, Math.round(len / period));
+    return {
+      cells, period, offset,
+      periodFrac: period / len, offsetFrac: offset / len,
+      confidence: v0 > 0 ? peak / v0 : 0,
+    };
+  }
+
+  function analyzeImageData(img) {
+    const { data, width: W, height: H } = img;
+    const L = toLuma(data, W, H);
+    const { col, row } = buildProfiles(L, W, H);
+    const ax = detectAxis(col, W), ay = detectAxis(row, H);
+    return {
+      cols: ax.cells, rows: ay.cells, ax, ay,
+      detected: ax.confidence >= CONF_T && ay.confidence >= CONF_T,
+      confidence: Math.min(ax.confidence, ay.confidence),
+    };
+  }
+  // exposed for tests / future modules
+  window.GridmapDetect = { analyzeImageData, CONF_T };
+
+  // ---- Working-area image import + analysis (drag-drop / paste / click) ----
   (function setupImport() {
-    const zone = $('dropzone'), img = $('mapImg'), input = $('fileInput');
-    if (!zone || !img || !input) return;
+    const zone = $('dropzone'), mapC = $('mapCanvas'), gridC = $('gridCanvas'),
+      input = $('fileInput'), gridSize = $('gridSize');
+    if (!zone || !mapC || !gridC || !input) return;
+
+    function onImage(image) {
+      const nW = image.naturalWidth, nH = image.naturalHeight;
+      if (!nW || !nH) return;
+
+      // 1) analysis on a downscaled copy
+      const aScale = Math.min(1, ANALYSIS_MAX / Math.max(nW, nH));
+      const aW = Math.max(1, Math.round(nW * aScale)), aH = Math.max(1, Math.round(nH * aScale));
+      const ac = document.createElement('canvas'); ac.width = aW; ac.height = aH;
+      const actx = ac.getContext('2d', { willReadFrequently: true });
+      actx.drawImage(image, 0, 0, aW, aH);
+      const res = analyzeImageData(actx.getImageData(0, 0, aW, aH));
+
+      // 2) detected grid, or estimate from a default cell size
+      let cols, rows, estimated, vFrac, vOff, hFrac, hOff;
+      if (res.detected) {
+        cols = res.cols; rows = res.rows; estimated = false;
+        vFrac = res.ax.periodFrac; vOff = res.ax.offsetFrac;
+        hFrac = res.ay.periodFrac; hOff = res.ay.offsetFrac;
+      } else {
+        cols = Math.max(1, Math.round(nW / DEFAULT_CELL_PX));
+        rows = Math.max(1, Math.round(nH / DEFAULT_CELL_PX));
+        estimated = true;
+        vFrac = 1 / cols; vOff = 0; hFrac = 1 / rows; hOff = 0;
+      }
+
+      // 3) display the map (base layer) and the grid overlay (hover layer)
+      const dScale = Math.min(1, DISPLAY_MAX / Math.max(nW, nH));
+      const dW = Math.max(1, Math.round(nW * dScale)), dH = Math.max(1, Math.round(nH * dScale));
+      mapC.width = dW; mapC.height = dH;
+      mapC.getContext('2d').drawImage(image, 0, 0, dW, dH);
+      gridC.width = dW; gridC.height = dH;
+      const ctx = gridC.getContext('2d');
+      ctx.clearRect(0, 0, dW, dH);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = estimated ? 'rgba(0,240,255,0.75)' : 'rgba(252,238,10,0.85)';
+      ctx.beginPath();
+      for (let f = vOff % vFrac; f <= 1.0001; f += vFrac) {
+        const x = Math.round(f * dW) + 0.5; ctx.moveTo(x, 0); ctx.lineTo(x, dH);
+      }
+      for (let f = hOff % hFrac; f <= 1.0001; f += hFrac) {
+        const y = Math.round(f * dH) + 0.5; ctx.moveTo(0, y); ctx.lineTo(dW, y);
+      }
+      ctx.stroke();
+
+      // 4) readout
+      if (gridSize) {
+        gridSize.textContent = (estimated ? '≈ ' : '') + cols + ' × ' + rows;
+        gridSize.classList.toggle('estimated', estimated);
+        gridSize.title = (estimated ? 'estimated (no clear grid found)' : 'detected grid')
+          + ' — confidence ' + res.confidence.toFixed(2);
+      }
+      zone.classList.add('has-image');
+    }
+
     function load(file) {
       if (!file || !file.type.startsWith('image/')) return;
       const url = URL.createObjectURL(file);
-      img.onload = () => URL.revokeObjectURL(url);
-      img.src = url;
-      zone.classList.add('has-image');
-      // TODO: run grid detection here and write `NN × MM` into #gridSize.
+      const image = new Image();
+      image.onload = () => { URL.revokeObjectURL(url); onImage(image); };
+      image.src = url;
     }
+
     zone.addEventListener('click', () => input.click());
     input.addEventListener('change', (e) => load(e.target.files[0]));
     zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });

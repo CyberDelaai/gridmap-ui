@@ -1,4 +1,4 @@
-<!-- GRIDMAP v0.4.0 -->
+<!-- GRIDMAP v0.4.1 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -228,16 +228,13 @@
   .detect-btns { display: flex; gap: 8px; }
   .detect-btn { flex: 1; height: 38px; letter-spacing: 2px; }
   .btn.detect-btn.active { background: color-mix(in srgb, var(--btn-color) 28%, transparent); box-shadow: 0 0 12px color-mix(in srgb, var(--btn-color) 50%, transparent); }
-  /* readout bar above the map view: resulting size + detection accuracy,
-     left-aligned (stays put in MANUAL mode or after crop/expand) */
-  .workspace .calc-bar { align-self: flex-start; display: flex; align-items: baseline; gap: 24px; flex-wrap: wrap; }
-  .workspace .calc-size {
-    font-size: 24px; line-height: 1.2; letter-spacing: 1.5px; font-weight: 700;
-    color: var(--main); text-transform: uppercase;
-    text-shadow: 0 0 12px rgba(var(--main-rgb),0.35);
+  /* resulting size (NN×MM) shown in the // EXPORT panel, above SAVE PNG */
+  .config .calc-size {
+    font-size: 19px; letter-spacing: 1.5px; font-weight: 700; text-transform: uppercase;
+    color: var(--main); text-align: center; margin-top: 18px;
   }
-  .workspace .calc-size .calc-val { margin-left: 6px; color: var(--accent); }
-  .workspace .calc-size.estimated .calc-val { color: var(--main); }
+  .config .calc-size .calc-val { margin-left: 6px; color: var(--accent); }
+  .config .calc-size.estimated .calc-val { color: var(--main); }
   /* // CANVAS d-pad: 3×3 grid — 8 arrows nudge the canvas window over the
      image, the centre square recenters it */
   .config .canvas-h2 { margin-top: 24px; }
@@ -336,7 +333,7 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.4.0</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.4.1</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
@@ -399,10 +396,6 @@
 
     <!-- CENTER working area -->
     <main class="workspace">
-      <div class="calc-bar">
-        <div class="calc-size" id="calcSize">// CALCULATED SIZE: <span class="calc-val" id="calcVal">??×??</span></div>
-        <div class="calc-size" id="accuracy">// ACCURACY: <span class="calc-val" id="accVal">—</span></div>
-      </div>
       <div class="dropzone" id="dropzone" aria-label="drop a map image">
         <div class="placeholder">
           <b>DROP A MAP IMAGE HERE</b><br />
@@ -447,6 +440,7 @@
           <input type="color" id="fillColor" class="fill-input" aria-label="fill colour" />
         </span>
       </div>
+      <div class="calc-size" id="calcSize">// RESULT SIZE: <span class="calc-val" id="calcVal">??×??</span></div>
       <button class="btn export-btn" data-augmented-ui="tl-clip br-clip both" id="exportBtn" type="button" disabled>⬇ SAVE PNG</button>
     </aside>
   </div>
@@ -521,7 +515,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v0.4.0';
+    const VER = ' // v0.4.1';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 
@@ -873,7 +867,7 @@
       fillRow = $('fillRow'), fillSwatch = $('fillSwatch'), fillVibrant = $('fillVibrant'),
       fillColor = $('fillColor');
     const autoBtn = $('autoBtn'), selectBtn = $('selectBtn'), colVal = $('colVal'), rowVal = $('rowVal'),
-      calcSize = $('calcSize'), calcVal = $('calcVal'), accVal = $('accVal'), panReset = $('panReset');
+      calcSize = $('calcSize'), calcVal = $('calcVal'), panReset = $('panReset');
     let fixEdges = false, edgeMode = 'crop', fillOverride = '', fillMode = 'vibrant';
     let manual = false, winC0 = 0, winR0 = 0, winC1 = 0, winR1 = 0;   // MANUAL window, in grid-cell indices
     let gCols = 0, gRows = 0;   // current grid cell counts (NN×MM); ×2 //2 ×3 //3 rescale these
@@ -1312,11 +1306,10 @@
       const est = view().estimated;
       if (colVal) colVal.textContent = cols;
       if (rowVal) rowVal.textContent = rows;
-      // headline: the resulting size — what the export will be (reflects manual
-      // edits and crop/expand) + the detection accuracy (confidence)
+      // resulting size shown above SAVE PNG — what the export will be
+      // (reflects manual edits and crop/expand)
       if (calcVal) calcVal.textContent = cols + '×' + rows;
       if (calcSize) calcSize.classList.toggle('estimated', est);
-      if (accVal) accVal.textContent = loaded.estimated ? '—' : Math.round((loaded.confidence || 0) * 100) + '%';
       if (offXVal) offXVal.textContent = Math.round(offX);
       if (offYVal) offYVal.textContent = Math.round(offY);
       syncFactorButtons();   // refresh ÷ availability for the new grid size

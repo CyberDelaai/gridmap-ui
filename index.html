@@ -1,4 +1,4 @@
-<!-- GRIDMAP v0.2.5 -->
+<!-- GRIDMAP v0.2.6 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -275,7 +275,7 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.2.5</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.2.6</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
@@ -401,7 +401,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v0.2.5';
+    const VER = ' // v0.2.6';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 
@@ -694,37 +694,14 @@
         vFrac = 1 / cols; vOff = 0; hFrac = 1 / rows; hOff = 0;
       }
 
-      // 3) display the map (base layer) and the grid overlay (hover layer)
-      const dScale = Math.min(1, DISPLAY_MAX / Math.max(nW, nH));
-      const dW = Math.max(1, Math.round(nW * dScale)), dH = Math.max(1, Math.round(nH * dScale));
-      mapC.width = dW; mapC.height = dH;
-      mapC.getContext('2d').drawImage(image, 0, 0, dW, dH);
-      gridC.width = dW; gridC.height = dH;
-      const ctx = gridC.getContext('2d');
-      ctx.clearRect(0, 0, dW, dH);
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = estimated ? 'rgba(0,240,255,0.75)' : 'rgba(252,238,10,0.85)';
-      ctx.beginPath();
-      for (let f = vOff % vFrac; f <= 1.0001; f += vFrac) {
-        const x = Math.round(f * dW) + 0.5; ctx.moveTo(x, 0); ctx.lineTo(x, dH);
-      }
-      for (let f = hOff % hFrac; f <= 1.0001; f += hFrac) {
-        const y = Math.round(f * dH) + 0.5; ctx.moveTo(0, y); ctx.lineTo(dW, y);
-      }
-      ctx.stroke();
-
-      // 4) readout
-      if (gridSize) {
-        gridSize.textContent = (estimated ? '≈ ' : '') + cols + ' × ' + rows;
-        gridSize.classList.toggle('estimated', estimated);
-        gridSize.title = (estimated ? 'estimated (no clear grid found)' : 'detected grid')
-          + ' — confidence ' + res.confidence.toFixed(2);
-      }
-      zone.classList.add('has-image');
-      loaded = { image, cols, rows, vFrac, vOff, hFrac, hOff };
+      // 3) store the map + detected geometry; renderDisplay() does the drawing
+      //    (so it reflects the live crop/expand/fill settings, not just export)
+      loaded = { image, cols, rows, vFrac, vOff, hFrac, hOff, estimated, confidence: res.confidence };
       autoFill = edgeColor(image);   // detected primary colour for the fill swatch
       refreshFill();
+      zone.classList.add('has-image');
       if (exportBtn) exportBtn.disabled = false;
+      renderDisplay();
     }
 
     // persist !== false → a fresh user import, so save it to IndexedDB.
@@ -806,15 +783,15 @@
       if (fillRow) fillRow.classList.toggle('disabled', !(fixEdges && edgeMode === 'expand'));
     }
     if (fixEdgesToggle) fixEdgesToggle.addEventListener('click', () => {
-      fixEdges = !fixEdges; save('gridmap:fixEdges', fixEdges ? '1' : '0'); syncToggles();
+      fixEdges = !fixEdges; save('gridmap:fixEdges', fixEdges ? '1' : '0'); syncToggles(); renderDisplay();
     });
     if (modeToggle) modeToggle.addEventListener('click', () => {
-      edgeMode = edgeMode === 'expand' ? 'crop' : 'expand'; save('gridmap:edgeMode', edgeMode); syncToggles();
+      edgeMode = edgeMode === 'expand' ? 'crop' : 'expand'; save('gridmap:edgeMode', edgeMode); syncToggles(); renderDisplay();
     });
     function setFill(color) {
       const hex = toHex(color);
       if (!hex) return;
-      fillOverride = hex; save('gridmap:fillColor', hex); refreshFill();
+      fillOverride = hex; save('gridmap:fillColor', hex); refreshFill(); renderDisplay();
     }
     // The swatch is a PIPETTE: sample any on-screen pixel (incl. the loaded
     // map) with the EyeDropper API — a magnifier that returns the exact pixel
@@ -830,40 +807,83 @@
     ['input', 'change'].forEach((ev) => fillColor && fillColor.addEventListener(ev, () => setFill(fillColor.value)));
     if (fillReset) fillReset.addEventListener('click', () => {
       fillOverride = ''; try { localStorage.removeItem('gridmap:fillColor'); } catch (e) {}
-      refreshFill();
+      refreshFill(); renderDisplay();
     });
     syncToggles();
     refreshFill();
 
-    // Canvas to export, applying the chosen edge fix. → { canvas, cols, rows }.
-    function exportCanvas() {
+    // ---- Result layout: how the edge-fix reshapes the map. Shared by the
+    // on-canvas preview AND the PNG export so they always match. Returns
+    // natural-pixel geometry: output size, source crop / placement, optional
+    // fill, resulting cell counts, and grid-line fractions within the result. ----
+    function computeLayout() {
       const { image, cols, rows, vFrac, vOff, hFrac, hOff } = loaded;
       const nW = image.naturalWidth, nH = image.naturalHeight;
-      const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
-      if (!fixEdges) { const c = mk(nW, nH); c.getContext('2d').drawImage(image, 0, 0); return { canvas: c, cols, rows }; }
-
+      if (!fixEdges) {
+        return { outW: nW, outH: nH, src: null, dx: 0, dy: 0, fill: null,
+                 cols, rows, vFrac, vOff, hFrac, hOff };
+      }
       const cellW = vFrac * nW, cellH = hFrac * nH, offX = vOff * nW, offY = hOff * nH;
       const nCols = Math.max(1, Math.floor((nW - offX) / cellW + 1e-6));
       const nRows = Math.max(1, Math.floor((nH - offY) / cellH + 1e-6));
-
       if (edgeMode === 'crop') {
         const sx = Math.round(offX), sy = Math.round(offY);
-        const cw = Math.min(Math.round(nCols * cellW), nW - sx), ch = Math.min(Math.round(nRows * cellH), nH - sy);
-        const c = mk(cw, ch);
-        c.getContext('2d').drawImage(image, sx, sy, cw, ch, 0, 0, cw, ch);
-        return { canvas: c, cols: nCols, rows: nRows };
+        const w = Math.min(Math.round(nCols * cellW), nW - sx), h = Math.min(Math.round(nRows * cellH), nH - sy);
+        return { outW: w, outH: h, src: { x: sx, y: sy, w, h }, dx: 0, dy: 0, fill: null,
+                 cols: nCols, rows: nRows, vFrac: 1 / nCols, vOff: 0, hFrac: 1 / nRows, hOff: 0 };
       }
-      // expand: pad partial edge cells out to whole cells, fill with edge colour
+      // expand: pad partial edge cells out to whole cells
       const rPart = nW - (offX + nCols * cellW), bPart = nH - (offY + nRows * cellH);
       const leftPad = offX > 0.5 ? cellW - offX : 0, rightPad = rPart > 0.5 ? cellW - rPart : 0;
       const topPad = offY > 0.5 ? cellH - offY : 0, botPad = bPart > 0.5 ? cellH - bPart : 0;
       const eCols = nCols + (leftPad > 0 ? 1 : 0) + (rightPad > 0 ? 1 : 0);
       const eRows = nRows + (topPad > 0 ? 1 : 0) + (botPad > 0 ? 1 : 0);
-      const cw = Math.round(eCols * cellW), ch = Math.round(eRows * cellH);
-      const c = mk(cw, ch), ctx = c.getContext('2d');
-      ctx.fillStyle = fillValue(); ctx.fillRect(0, 0, cw, ch);
-      ctx.drawImage(image, Math.round(leftPad), Math.round(topPad));
-      return { canvas: c, cols: eCols, rows: eRows };
+      return { outW: Math.round(eCols * cellW), outH: Math.round(eRows * cellH),
+               src: null, dx: Math.round(leftPad), dy: Math.round(topPad), fill: fillValue(),
+               cols: eCols, rows: eRows, vFrac: 1 / eCols, vOff: 0, hFrac: 1 / eRows, hOff: 0 };
+    }
+
+    // Paint a layout onto a canvas at the given scale (out → target px).
+    function paint(canvas, L, scale) {
+      const image = loaded.image, nW = image.naturalWidth, nH = image.naturalHeight;
+      const w = Math.max(1, Math.round(L.outW * scale)), h = Math.max(1, Math.round(L.outH * scale));
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (L.fill) { ctx.fillStyle = L.fill; ctx.fillRect(0, 0, w, h); }
+      if (L.src) ctx.drawImage(image, L.src.x, L.src.y, L.src.w, L.src.h, 0, 0, w, h);
+      else ctx.drawImage(image, 0, 0, nW, nH, Math.round(L.dx * scale), Math.round(L.dy * scale), Math.round(nW * scale), Math.round(nH * scale));
+      return { w, h };
+    }
+
+    // Live preview: paint the edge-fixed result + grid overlay + size readout.
+    function renderDisplay() {
+      if (!loaded) return;
+      const L = computeLayout();
+      const scale = Math.min(1, DISPLAY_MAX / Math.max(L.outW, L.outH));
+      const { w: dW, h: dH } = paint(mapC, L, scale);
+      gridC.width = dW; gridC.height = dH;
+      const g = gridC.getContext('2d');
+      g.clearRect(0, 0, dW, dH);
+      g.lineWidth = 1;
+      g.strokeStyle = loaded.estimated ? 'rgba(0,240,255,0.75)' : 'rgba(252,238,10,0.85)';
+      g.beginPath();
+      for (let f = L.vOff % L.vFrac; f <= 1.0001; f += L.vFrac) { const x = Math.round(f * dW) + 0.5; g.moveTo(x, 0); g.lineTo(x, dH); }
+      for (let f = L.hOff % L.hFrac; f <= 1.0001; f += L.hFrac) { const y = Math.round(f * dH) + 0.5; g.moveTo(0, y); g.lineTo(dW, y); }
+      g.stroke();
+      if (gridSize) {
+        gridSize.textContent = (loaded.estimated ? '≈ ' : '') + L.cols + ' × ' + L.rows;
+        gridSize.classList.toggle('estimated', loaded.estimated);
+        gridSize.title = (loaded.estimated ? 'estimated (no clear grid found)' : 'detected grid')
+          + ' — confidence ' + (loaded.confidence || 0).toFixed(2) + (fixEdges ? ' · ' + edgeMode : '');
+      }
+    }
+
+    // PNG export = the same layout at full resolution.
+    function exportCanvas() {
+      const c = document.createElement('canvas');
+      const L = computeLayout();
+      paint(c, L, 1);
+      return { canvas: c, cols: L.cols, rows: L.rows };
     }
 
     // PNG export: re-encode (full-res) to PNG, named with the resulting size.

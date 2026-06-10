@@ -1,4 +1,4 @@
-<!-- GRIDMAP v0.2.9 -->
+<!-- GRIDMAP v0.3.0 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -220,19 +220,58 @@
   /* the real colour input is off-screen; the swatch opens it via showPicker() */
   .fill-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
   .workspace { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
-  /* NN x MM size readout on top of the working area */
-  .size-readout {
-    align-self: center;
-    font-size: 26px; letter-spacing: 4px; font-weight: 700;
-    color: var(--accent); text-shadow: 0 0 14px rgba(var(--accent-rgb),0.4);
-    padding: 6px 22px;
-    --aug-border-all: 1px; --aug-border-bg: rgba(var(--accent-rgb),0.5);
-    --aug-tl: 8px; --aug-br: 8px;
-    background: rgba(0,0,0,0.35);
-    transition: color .15s;
+  /* // GRID panel: the labelled AUTO|MANUAL toggle */
+  .topbar { display: flex; flex-direction: column; gap: 14px; margin-bottom: 14px; }
+  .topbar .fx-toggle { margin-top: 0; }
+  .topbar .side-switch.auto-switch { width: 120px; }
+  /* readout bar above the map view: resulting size + detection accuracy,
+     left-aligned (stays put in MANUAL mode or after crop/expand) */
+  .workspace .calc-bar { align-self: flex-start; display: flex; align-items: baseline; gap: 24px; flex-wrap: wrap; }
+  .workspace .calc-size {
+    font-size: 24px; line-height: 1.2; letter-spacing: 1.5px; font-weight: 700;
+    color: var(--main); text-transform: uppercase;
+    text-shadow: 0 0 12px rgba(var(--main-rgb),0.35);
   }
-  /* cyan + "≈" when the count is an estimate (no clear grid detected) */
-  .size-readout.estimated { color: var(--main); --aug-border-bg: rgba(var(--main-rgb),0.5); }
+  .workspace .calc-size .calc-val { margin-left: 6px; color: var(--accent); }
+  .workspace .calc-size.estimated .calc-val { color: var(--main); }
+  /* // CANVAS d-pad: 3×3 grid — 8 arrows nudge the canvas window over the
+     image, the centre square recenters it */
+  .config .canvas-h2 { margin-top: 24px; }
+  .dpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; width: 150px; }
+  .dpad button {
+    aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center;
+    background: var(--panel); color: var(--main); cursor: pointer;
+    border: 1px solid rgba(var(--main-rgb),0.35);
+    font-family: 'JetBrains Mono', monospace; font-size: 20px; line-height: 1;
+    transition: background .12s, color .12s, border-color .12s;
+  }
+  .dpad button:hover { background: rgba(var(--main-rgb),0.16); color: var(--accent); border-color: var(--main); }
+  .dpad .dpad-center { color: var(--accent); border-color: rgba(var(--accent-rgb),0.45); }
+  .dpad .dpad-center:hover { background: rgba(var(--accent-rgb),0.16); border-color: var(--accent); }
+  /* d-pad + the ×2 //2 ×3 //3 factor pad side by side */
+  .canvas-controls { display: flex; align-items: center; gap: 10px; }
+  .factor-pad { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+  .factor-pad .factor-btn {
+    width: 46px; height: 46px; display: flex; align-items: center; justify-content: center;
+    background: var(--panel); color: var(--main); cursor: pointer;
+    border: 1px solid rgba(var(--main-rgb),0.35);
+    font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; line-height: 1;
+    transition: background .12s, color .12s, border-color .12s;
+  }
+  .factor-pad .factor-btn:hover:not(:disabled) { background: rgba(var(--main-rgb),0.16); color: var(--accent); border-color: var(--main); }
+  .factor-pad .factor-btn:disabled { opacity: .3; cursor: not-allowed; }
+  /* // OFFSET steppers: nudge the grid origin in X / Y */
+  .offset-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
+  .stepper { display: inline-flex; align-items: center; gap: 6px; }
+  .stepper .ostep {
+    width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;
+    background: var(--panel); color: var(--main); cursor: pointer;
+    border: 1px solid rgba(var(--main-rgb),0.35);
+    font-family: 'JetBrains Mono', monospace; font-size: 16px; line-height: 1;
+    transition: background .12s, color .12s, border-color .12s;
+  }
+  .stepper .ostep:hover { background: rgba(var(--main-rgb),0.16); color: var(--accent); border-color: var(--main); }
+  .stepper .onum { min-width: 4ch; text-align: center; font-size: 13px; font-weight: 700; color: var(--accent); }
   /* central drop zone / map canvas */
   .dropzone {
     flex: 1; min-height: 440px; position: relative;
@@ -277,20 +316,72 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.2.9</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.3.0</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
   <div class="layout">
-    <!-- LEFT config (source / detection settings — TODO) -->
+    <!-- LEFT config — grid mode + manual cell-count controls -->
     <aside class="config config-left" data-augmented-ui="tl-clip br-clip border">
-      <h2>// SOURCE</h2>
-      <p class="hint">Detection controls land here — line sensitivity, manual grid override, origin nudge.</p>
+      <h2>// GRID</h2>
+      <div class="topbar">
+        <div class="fx-toggle">
+          <span class="fx-label">// DETECTION:</span>
+          <button class="side-switch auto-switch" id="autoToggle" type="button" data-pos="left" aria-label="auto or manual grid">
+            <span class="thumb"></span><span class="lab l">AUTO</span><span class="lab r">MANUAL</span>
+          </button>
+        </div>
+      </div>
+      <p class="hint">AUTO uses the detected grid. Use the // CANVAS pad to take manual control; AUTO resets everything back to detection.</p>
+
+      <h2 class="canvas-h2">// CANVAS</h2>
+      <div class="canvas-controls">
+        <div class="dpad" role="group" aria-label="move canvas window over the image">
+          <button id="panNW" type="button" aria-label="up-left">\</button>
+          <button id="panN" type="button" aria-label="up">^</button>
+          <button id="panNE" type="button" aria-label="up-right">/</button>
+          <button id="panW" type="button" aria-label="left">&lt;</button>
+          <button class="dpad-center" id="panReset" type="button" aria-label="recenter window">□</button>
+          <button id="panE" type="button" aria-label="right">&gt;</button>
+          <button id="panSW" type="button" aria-label="down-left">/</button>
+          <button id="panS" type="button" aria-label="down">v</button>
+          <button id="panSE" type="button" aria-label="down-right">\</button>
+        </div>
+        <div class="factor-pad" role="group" aria-label="multiply or divide the cell count">
+          <button class="factor-btn" id="facDiv2" type="button" aria-label="halve the cell count">/2</button>
+          <button class="factor-btn" id="facMul2" type="button" aria-label="double the cell count">&times;2</button>
+          <button class="factor-btn" id="facDiv3" type="button" aria-label="third the cell count">/3</button>
+          <button class="factor-btn" id="facMul3" type="button" aria-label="triple the cell count">&times;3</button>
+        </div>
+      </div>
+      <p class="hint">Click slides the window a cell. Ctrl+click grows the canvas a cell on that side (Ctrl+Shift shrinks it); Shift reverses a move. □ resets the window; Ctrl+□ fits the whole image. The window can run off the image — outside is trimmed, gaps take the fill. ×2 //2 ×3 //3 re-subdivide the grid (÷ only when it splits evenly).</p>
+
+      <h2 class="canvas-h2">// OFFSET</h2>
+      <div class="offset-row">
+        <span class="fx-label">// X →:</span>
+        <span class="stepper">
+          <button class="ostep" id="offXDec" type="button" aria-label="grid offset left">−</button>
+          <span class="onum" id="offXVal">0</span>
+          <button class="ostep" id="offXInc" type="button" aria-label="grid offset right">+</button>
+        </span>
+      </div>
+      <div class="offset-row">
+        <span class="fx-label">// Y ↓:</span>
+        <span class="stepper">
+          <button class="ostep" id="offYDec" type="button" aria-label="grid offset up">−</button>
+          <span class="onum" id="offYVal">0</span>
+          <button class="ostep" id="offYInc" type="button" aria-label="grid offset down">+</button>
+        </span>
+      </div>
+      <p class="hint">Nudge the grid origin from the top-left corner (X right, Y down), in pixels.</p>
     </aside>
 
     <!-- CENTER working area -->
     <main class="workspace">
-      <div class="size-readout" id="gridSize">?? &times; ??</div>
+      <div class="calc-bar">
+        <div class="calc-size" id="calcSize">// CALCULATED SIZE: <span class="calc-val" id="calcVal">??×??</span></div>
+        <div class="calc-size" id="accuracy">// ACCURACY: <span class="calc-val" id="accVal">—</span></div>
+      </div>
       <div class="dropzone" id="dropzone" aria-label="drop a map image">
         <div class="placeholder">
           <b>DROP A MAP IMAGE HERE</b><br />
@@ -403,7 +494,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v0.2.9';
+    const VER = ' // v0.3.0';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 
@@ -666,12 +757,12 @@
   // ---- Working-area image import + analysis (drag-drop / paste / click) ----
   (function setupImport() {
     const zone = $('dropzone'), mapC = $('mapCanvas'), gridC = $('gridCanvas'),
-      input = $('fileInput'), gridSize = $('gridSize'), exportBtn = $('exportBtn');
+      input = $('fileInput'), exportBtn = $('exportBtn');
     if (!zone || !mapC || !gridC || !input) return;
     let loaded = null;        // current map + detected grid geometry, for PNG export
     let autoFill = '#808080'; // detected primary (border) colour of the current map
 
-    function onImage(image) {
+    function onImage(image, restore) {
       const nW = image.naturalWidth, nH = image.naturalHeight;
       if (!nW || !nH) return;
 
@@ -699,27 +790,15 @@
       // 3) store the map + detected geometry; renderDisplay() does the drawing
       //    (so it reflects the live crop/expand/fill settings, not just export)
       loaded = { image, cols, rows, vFrac, vOff, hFrac, hOff, estimated, confidence: res.confidence };
-      autoFill = edgeColor(image);   // detected primary colour for the fill swatch
-
-      // Smart default per import: a DETECTED grid with partial edge cells →
-      // FIX EDGES on + CROP + the detected primary as fill (a clean whole-cell
-      // export is one click away). Nothing to crop (edge-aligned grid, or an
-      // estimate) → FIX EDGES off.
-      let partial = false;
-      if (res.detected) {
-        const cw = vFrac * nW, ch = hFrac * nH, ox = vOff * nW, oy = hOff * nH;
-        const nc = Math.floor((nW - ox) / cw + 1e-6), nr = Math.floor((nH - oy) / ch + 1e-6);
-        partial = ox > 1 || oy > 1 || (nW - (ox + nc * cw)) > 1 || (nH - (oy + nr * ch)) > 1;
+      autoFill = edgeColor(image);     // detected primary colour for the fill swatch
+      if (restore) {                   // reload of the saved map → restore the saved settings
+        restoreManual();
+        syncToggles(); refreshFill(); syncFillMode();
+      } else {                         // fresh import → detected defaults + smart fix-edges
+        manual = false; gCols = cols; gRows = rows; offX = 0; offY = 0;
+        applyAutoFix();                // smart fix-edges default (+ syncToggles + refreshFill)
       }
-      fixEdges = partial;
-      save('gridmap:fixEdges', partial ? '1' : '0');
-      if (partial) {
-        edgeMode = 'crop'; save('gridmap:edgeMode', 'crop');
-        fillOverride = ''; try { localStorage.removeItem('gridmap:fillColor'); } catch (e) {}
-      }
-      syncToggles();
-
-      refreshFill();
+      syncAutoMode();
       zone.classList.add('has-image');
       if (exportBtn) exportBtn.disabled = false;
       renderDisplay();
@@ -732,7 +811,8 @@
       if (persist !== false) IDB.put(blob).catch(() => {});
       const url = URL.createObjectURL(blob);
       const image = new Image();
-      image.onload = () => { URL.revokeObjectURL(url); onImage(image); };
+      const restore = persist === false;
+      image.onload = () => { URL.revokeObjectURL(url); onImage(image, restore); };
       image.src = url;
     }
 
@@ -753,7 +833,12 @@
     const fixEdgesToggle = $('fixEdgesToggle'), modeToggle = $('modeToggle'), modeRow = $('modeRow'),
       fillRow = $('fillRow'), fillSwatch = $('fillSwatch'), fillVibrant = $('fillVibrant'),
       fillColor = $('fillColor');
+    const autoToggle = $('autoToggle'), colVal = $('colVal'), rowVal = $('rowVal'),
+      calcSize = $('calcSize'), calcVal = $('calcVal'), accVal = $('accVal'), panReset = $('panReset');
     let fixEdges = false, edgeMode = 'crop', fillOverride = '', fillMode = 'vibrant';
+    let manual = false, winC0 = 0, winR0 = 0, winC1 = 0, winR1 = 0;   // MANUAL window, in grid-cell indices
+    let gCols = 0, gRows = 0;   // current grid cell counts (NN×MM); ×2 //2 ×3 //3 rescale these
+    let offX = 0, offY = 0;     // grid-origin nudge from the top-left (image px, sub-cell)
     try {
       fixEdges = localStorage.getItem('gridmap:fixEdges') === '1';
       if (localStorage.getItem('gridmap:edgeMode') === 'expand') edgeMode = 'expand';
@@ -803,7 +888,8 @@
       if (fixEdgesToggle) fixEdgesToggle.dataset.pos = fixEdges ? 'right' : 'left';
       if (modeToggle) modeToggle.dataset.pos = edgeMode === 'expand' ? 'right' : 'left';
       if (modeRow) modeRow.classList.toggle('disabled', !fixEdges);
-      if (fillRow) fillRow.classList.toggle('disabled', !(fixEdges && edgeMode === 'expand'));
+      // the fill is used by EXPAND and by the MANUAL window's off-image area
+      if (fillRow) fillRow.classList.toggle('disabled', !(manual || (fixEdges && edgeMode === 'expand')));
     }
     if (fixEdgesToggle) fixEdgesToggle.addEventListener('click', () => {
       fixEdges = !fixEdges; save('gridmap:fixEdges', fixEdges ? '1' : '0'); syncToggles(); renderDisplay();
@@ -837,34 +923,250 @@
       if (fillColor) fillColor.click();
     });
     ['input', 'change'].forEach((ev) => fillColor && fillColor.addEventListener(ev, () => setFill(fillColor.value)));
+
+    // ---- AUTO | MANUAL grid mode ----
+    // AUTO = the detected grid, with crop/expand handling edge cells. MANUAL =
+    // a fixed-size canvas window (the detected whole-cell grid) that the
+    // // CANVAS d-pad slides over the image one whole cell at a time — it may
+    // run off the edges; image outside the window is greyed and trimmed away.
+    function view() {
+      const c = gCols || loaded.cols, r = gRows || loaded.rows;
+      const vFrac = loaded.vFrac * loaded.cols / c, hFrac = loaded.hFrac * loaded.rows / r;
+      const nW = loaded.image.naturalWidth, nH = loaded.image.naturalHeight;
+      const wrap = (o, f) => ((o % f) + f) % f;   // grid phase is periodic — keep it in [0, cell)
+      return {
+        cols: c, rows: r, vFrac, hFrac,
+        vOff: wrap(loaded.vOff + offX / nW, vFrac),
+        hOff: wrap(loaded.hOff + offY / nH, hFrac),
+        estimated: loaded.estimated,
+      };
+    }
+    function syncAutoMode() {
+      if (autoToggle) autoToggle.dataset.pos = manual ? 'right' : 'left';
+      syncToggles();   // the FILL control is also usable in MANUAL (off-image fill)
+    }
+    // Re-apply the smart fix-edges default from the DETECTED grid — used on
+    // import and when returning to AUTO (which resets everything).
+    function applyAutoFix() {
+      if (!loaded) return;
+      const image = loaded.image, nW = image.naturalWidth, nH = image.naturalHeight;
+      const v = view();
+      let partial = false;
+      if (!v.estimated) {
+        const cw = v.vFrac * nW, ch = v.hFrac * nH, ox = v.vOff * nW, oy = v.hOff * nH;
+        const nc = Math.floor((nW - ox) / cw + 1e-6), nr = Math.floor((nH - oy) / ch + 1e-6);
+        partial = ox > 1 || oy > 1 || (nW - (ox + nc * cw)) > 1 || (nH - (oy + nr * ch)) > 1;
+      }
+      fixEdges = partial; save('gridmap:fixEdges', partial ? '1' : '0');
+      if (partial) {
+        edgeMode = 'crop'; save('gridmap:edgeMode', 'crop');
+        fillOverride = ''; try { localStorage.removeItem('gridmap:fillColor'); } catch (e) {}
+      }
+      syncToggles(); refreshFill();
+    }
+    // ---- // CANVAS d-pad ----
+    // Plain click slides the window a cell; CTRL grows the canvas a cell on that
+    // side (CTRL+SHIFT shrinks it); SHIFT reverses a plain move. The window is
+    // held as grid-cell bounds [winC0,winC1) × [winR0,winR1) and may run off the
+    // image. Icons reflect the held modifiers live.
+    const PAN_DIRS = { panNW: [-1, -1], panN: [0, -1], panNE: [1, -1], panW: [-1, 0],
+                       panE: [1, 0], panSW: [-1, 1], panS: [0, 1], panSE: [1, 1] };
+    function cellGeom() {
+      const nW = loaded.image.naturalWidth, nH = loaded.image.naturalHeight, v = view();
+      return { nW, nH, cellW: v.vFrac * nW, cellH: v.hFrac * nH,
+               baseX: v.vOff * nW, baseY: v.hOff * nH };
+    }
+    function initWindow() {                       // reset to the detected whole-cell extent
+      const { nW, nH, cellW, cellH, baseX, baseY } = cellGeom();
+      winC0 = 0; winR0 = 0;
+      winC1 = Math.max(1, Math.floor((nW - baseX) / cellW + 1e-6));
+      winR1 = Math.max(1, Math.floor((nH - baseY) / cellH + 1e-6));
+    }
+    function fitWindow() {                         // cover the WHOLE image (partial edges rounded up)
+      const { nW, nH, cellW, cellH, baseX, baseY } = cellGeom();
+      winC0 = Math.floor((0 - baseX) / cellW + 1e-6);
+      winR0 = Math.floor((0 - baseY) / cellH + 1e-6);
+      winC1 = Math.ceil((nW - baseX) / cellW - 1e-6);
+      winR1 = Math.ceil((nH - baseY) / cellH - 1e-6);
+      if (winC1 <= winC0) winC1 = winC0 + 1;
+      if (winR1 <= winR0) winR1 = winR0 + 1;
+    }
+    function setManual() { if (loaded && !manual) { manual = true; initWindow(); } }
+    // persist / restore the per-image MANUAL state (mode, factor, offset, window)
+    function saveManual() {
+      save('gridmap:manual', manual ? '1' : '0');
+      save('gridmap:gCols', gCols); save('gridmap:gRows', gRows);
+      save('gridmap:offX', offX); save('gridmap:offY', offY);
+      save('gridmap:winC0', winC0); save('gridmap:winR0', winR0);
+      save('gridmap:winC1', winC1); save('gridmap:winR1', winR1);
+    }
+    function restoreManual() {
+      const gi = (k, d) => { const n = parseInt(localStorage.getItem(k), 10); return Number.isFinite(n) ? n : d; };
+      const gf = (k, d) => { const n = parseFloat(localStorage.getItem(k)); return Number.isFinite(n) ? n : d; };
+      try {
+        manual = localStorage.getItem('gridmap:manual') === '1';
+        gCols = gi('gridmap:gCols', loaded.cols); gRows = gi('gridmap:gRows', loaded.rows);
+        offX = gf('gridmap:offX', 0); offY = gf('gridmap:offY', 0);
+        winC0 = gi('gridmap:winC0', 0); winR0 = gi('gridmap:winR0', 0);
+        winC1 = gi('gridmap:winC1', gCols); winR1 = gi('gridmap:winR1', gRows);
+      } catch (e) { manual = false; gCols = loaded.cols; gRows = loaded.rows; offX = 0; offY = 0; }
+    }
+    function moveWindow(dx, dy) { winC0 += dx; winC1 += dx; winR0 += dy; winR1 += dy; }
+    function growWindow(dx, dy, g) {              // g=+1 expand / -1 contract, on the side(s) dir points to
+      if (dx > 0) { if (g > 0) winC1++; else if (winC1 - winC0 > 1) winC1--; }
+      if (dx < 0) { if (g > 0) winC0--; else if (winC1 - winC0 > 1) winC0++; }
+      if (dy > 0) { if (g > 0) winR1++; else if (winR1 - winR0 > 1) winR1--; }
+      if (dy < 0) { if (g > 0) winR0--; else if (winR1 - winR0 > 1) winR0++; }
+    }
+    function onPad(dx, dy, e) {
+      if (!loaded) return;
+      setManual();
+      const sign = e.shiftKey ? -1 : 1;                       // SHIFT reverses
+      if (e.ctrlKey || e.metaKey) growWindow(dx, dy, sign);   // CTRL: expand / (+SHIFT) contract
+      else moveWindow(dx * sign, dy * sign);                  // plain: move (SHIFT = opposite way)
+      syncAutoMode(); renderDisplay();
+    }
+    Object.keys(PAN_DIRS).forEach((id) => {
+      const el = $(id);
+      if (!el) return;
+      el.addEventListener('click', (e) => onPad(PAN_DIRS[id][0], PAN_DIRS[id][1], e));
+      el.addEventListener('contextmenu', (e) => e.preventDefault());   // ctrl/right-click safe
+    });
+    // centre square: click resets the window to the detected whole-cell extent;
+    // CTRL+click fits the WHOLE image (max space — partial edges rounded up).
+    if (panReset) {
+      panReset.addEventListener('click', (e) => {
+        if (!loaded) return;
+        setManual();
+        if (e.ctrlKey || e.metaKey) fitWindow(); else initWindow();
+        syncAutoMode(); renderDisplay();
+      });
+      panReset.addEventListener('contextmenu', (e) => e.preventDefault());
+    }
+    if (autoToggle) autoToggle.addEventListener('click', () => {
+      if (manual) {                                 // → AUTO: reset everything to detection
+        manual = false; offX = 0; offY = 0;
+        if (loaded) { gCols = loaded.cols; gRows = loaded.rows; applyAutoFix(); }
+      } else setManual();                           // → MANUAL
+      syncAutoMode(); renderDisplay();
+    });
+
+    // Live d-pad icons: < > ^ v (and \ /), doubled while CTRL is held (expand),
+    // flipped while SHIFT is held (reverse).
+    function dirGlyph(dx, dy, ctrl, shift) {
+      let x = dx, y = dy;
+      if (shift) { x = -x; y = -y; }
+      const g = (x && y) ? (x === y ? '\\' : '/') : (x < 0 ? '<' : x > 0 ? '>' : y < 0 ? '^' : 'v');
+      return ctrl ? g + g : g;
+    }
+    function updatePadIcons(ctrl, shift) {
+      Object.keys(PAN_DIRS).forEach((id) => {
+        const el = $(id); if (!el) return;
+        el.textContent = dirGlyph(PAN_DIRS[id][0], PAN_DIRS[id][1], ctrl, shift);
+      });
+    }
+    const padMods = (e) => updatePadIcons(e.ctrlKey || e.metaKey, e.shiftKey);
+    document.addEventListener('keydown', padMods);
+    document.addEventListener('keyup', padMods);
+    window.addEventListener('blur', () => updatePadIcons(false, false));
+    updatePadIcons(false, false);
+
+    // ---- // CANVAS factor pad: ×2 //2 ×3 //3 — re-subdivide the grid (NN×MM).
+    // Multiply always; divide only when BOTH axes split evenly (count % f === 0).
+    const facMul2 = $('facMul2'), facDiv2 = $('facDiv2'), facMul3 = $('facMul3'), facDiv3 = $('facDiv3');
+    const MAX_SUB_CELLS = 600;   // sanity cap so ×N can't explode the line count
+    function applyFactor(f) {
+      if (!loaded) return;
+      if (f < 1) {                                  // divide: both axes must split evenly
+        const d = Math.round(1 / f);
+        if (gCols % d !== 0 || gRows % d !== 0) return;
+      } else if (gCols * f > MAX_SUB_CELLS || gRows * f > MAX_SUB_CELLS) {
+        return;
+      }
+      setManual();                                  // a factor press takes manual control too
+      gCols = Math.round(gCols * f); gRows = Math.round(gRows * f);
+      // keep the window roughly in place: it now spans f× the cells
+      winC0 = Math.round(winC0 * f); winC1 = Math.round(winC1 * f);
+      winR0 = Math.round(winR0 * f); winR1 = Math.round(winR1 * f);
+      if (winC1 <= winC0) winC1 = winC0 + 1;
+      if (winR1 <= winR0) winR1 = winR0 + 1;
+      syncAutoMode(); renderDisplay();
+    }
+    function syncFactorButtons() {
+      const ok = !!loaded;
+      if (facDiv2) facDiv2.disabled = !ok || gCols % 2 !== 0 || gRows % 2 !== 0;
+      if (facDiv3) facDiv3.disabled = !ok || gCols % 3 !== 0 || gRows % 3 !== 0;
+      if (facMul2) facMul2.disabled = !ok || gCols * 2 > MAX_SUB_CELLS || gRows * 2 > MAX_SUB_CELLS;
+      if (facMul3) facMul3.disabled = !ok || gCols * 3 > MAX_SUB_CELLS || gRows * 3 > MAX_SUB_CELLS;
+    }
+    if (facMul2) facMul2.addEventListener('click', () => applyFactor(2));
+    if (facDiv2) facDiv2.addEventListener('click', () => applyFactor(1 / 2));
+    if (facMul3) facMul3.addEventListener('click', () => applyFactor(3));
+    if (facDiv3) facDiv3.addEventListener('click', () => applyFactor(1 / 3));
+
+    // ---- // OFFSET: nudge the grid origin in X / Y (sub-cell phase), measured
+    // from the top-left toward the bottom-right. Using it flips to MANUAL. ----
+    const offXDec = $('offXDec'), offXInc = $('offXInc'), offYDec = $('offYDec'), offYInc = $('offYInc'),
+      offXVal = $('offXVal'), offYVal = $('offYVal');
+    const OFF_STEP = 0.05;   // nudge per click, as a fraction of a cell
+    function nudgeOff(axis, dir) {
+      if (!loaded) return;
+      setManual();
+      const nW = loaded.image.naturalWidth, nH = loaded.image.naturalHeight, v = view();
+      if (axis === 'x') { const cell = v.vFrac * nW, s = Math.max(1, Math.round(cell * OFF_STEP)); offX = ((offX + dir * s) % cell + cell) % cell; }
+      else { const cell = v.hFrac * nH, s = Math.max(1, Math.round(cell * OFF_STEP)); offY = ((offY + dir * s) % cell + cell) % cell; }
+      syncAutoMode(); renderDisplay();
+    }
+    if (offXDec) offXDec.addEventListener('click', () => nudgeOff('x', -1));
+    if (offXInc) offXInc.addEventListener('click', () => nudgeOff('x', 1));
+    if (offYDec) offYDec.addEventListener('click', () => nudgeOff('y', -1));
+    if (offYInc) offYInc.addEventListener('click', () => nudgeOff('y', 1));
+
     syncToggles();
     refreshFill();
     syncFillMode();
+    syncAutoMode();
+    syncFactorButtons();
 
     // ---- Result layout: how the edge-fix reshapes the map. Shared by the
     // on-canvas preview AND the PNG export so they always match. Returns
     // natural-pixel geometry: output size, source crop / placement, optional
     // fill, resulting cell counts, and grid-line fractions within the result. ----
     function computeLayout() {
-      const { image, cols, rows, vFrac, vOff, hFrac, hOff } = loaded;
-      const nW = image.naturalWidth, nH = image.naturalHeight;
+      const image = loaded.image, nW = image.naturalWidth, nH = image.naturalHeight;
+      if (manual) {
+        // MANUAL: the window is grid-cell bounds [winC0,winC1) × [winR0,winR1),
+        // moved/grown by the d-pad. It may sit partly/fully off the image;
+        // paint() trims to the image and fills the rest with the chosen fill.
+        const v = view();
+        const cellW = v.vFrac * nW, cellH = v.hFrac * nH;
+        const baseX = v.vOff * nW, baseY = v.hOff * nH;
+        const nCols = winC1 - winC0, nRows = winR1 - winR0;
+        const winW = nCols * cellW, winH = nRows * cellH;
+        return {
+          win: { x: baseX + winC0 * cellW, y: baseY + winR0 * cellH, w: winW, h: winH },
+          outW: Math.round(winW), outH: Math.round(winH),
+          cols: nCols, rows: nRows, vFrac: 1 / nCols, vOff: 0, hFrac: 1 / nRows, hOff: 0,
+        };
+      }
+      const { cols, rows, vFrac, vOff, hFrac, hOff } = view();
       if (!fixEdges) {
         return { outW: nW, outH: nH, src: null, dx: 0, dy: 0, fill: null,
                  cols, rows, vFrac, vOff, hFrac, hOff };
       }
-      const cellW = vFrac * nW, cellH = hFrac * nH, offX = vOff * nW, offY = hOff * nH;
-      const nCols = Math.max(1, Math.floor((nW - offX) / cellW + 1e-6));
-      const nRows = Math.max(1, Math.floor((nH - offY) / cellH + 1e-6));
+      const cellW = vFrac * nW, cellH = hFrac * nH, ox = vOff * nW, oy = hOff * nH;
+      const nCols = Math.max(1, Math.floor((nW - ox) / cellW + 1e-6));
+      const nRows = Math.max(1, Math.floor((nH - oy) / cellH + 1e-6));
       if (edgeMode === 'crop') {
-        const sx = Math.round(offX), sy = Math.round(offY);
+        const sx = Math.round(ox), sy = Math.round(oy);
         const w = Math.min(Math.round(nCols * cellW), nW - sx), h = Math.min(Math.round(nRows * cellH), nH - sy);
         return { outW: w, outH: h, src: { x: sx, y: sy, w, h }, dx: 0, dy: 0, fill: null,
                  cols: nCols, rows: nRows, vFrac: 1 / nCols, vOff: 0, hFrac: 1 / nRows, hOff: 0 };
       }
       // expand: pad partial edge cells out to whole cells
-      const rPart = nW - (offX + nCols * cellW), bPart = nH - (offY + nRows * cellH);
-      const leftPad = offX > 0.5 ? cellW - offX : 0, rightPad = rPart > 0.5 ? cellW - rPart : 0;
-      const topPad = offY > 0.5 ? cellH - offY : 0, botPad = bPart > 0.5 ? cellH - bPart : 0;
+      const rPart = nW - (ox + nCols * cellW), bPart = nH - (oy + nRows * cellH);
+      const leftPad = ox > 0.5 ? cellW - ox : 0, rightPad = rPart > 0.5 ? cellW - rPart : 0;
+      const topPad = oy > 0.5 ? cellH - oy : 0, botPad = bPart > 0.5 ? cellH - bPart : 0;
       const eCols = nCols + (leftPad > 0 ? 1 : 0) + (rightPad > 0 ? 1 : 0);
       const eRows = nRows + (topPad > 0 ? 1 : 0) + (botPad > 0 ? 1 : 0);
       return { outW: Math.round(eCols * cellW), outH: Math.round(eRows * cellH), expand: true,
@@ -878,6 +1180,39 @@
       const w = Math.max(1, Math.round(L.outW * scale)), h = Math.max(1, Math.round(L.outH * scale));
       canvas.width = w; canvas.height = h;
       const ctx = canvas.getContext('2d');
+      if (L.win) {
+        // window over image: fill any area beyond the image with the selected
+        // fill (vibrant edge-extend, or solid), then drop the window∩image
+        // overlap on top.
+        const wx = L.win.x, wy = L.win.y;
+        const sx = Math.max(0, wx), sy = Math.max(0, wy);
+        const ex = Math.min(nW, wx + L.win.w), ey = Math.min(nH, wy + L.win.h);
+        if (ex <= sx || ey <= sy) {           // window entirely off the image
+          ctx.fillStyle = toHex(fillValue()) || '#808080'; ctx.fillRect(0, 0, w, h);
+          return { w, h };
+        }
+        const padL = Math.round((sx - wx) * scale), padT = Math.round((sy - wy) * scale);
+        const ow = Math.round((ex - sx) * scale), oh = Math.round((ey - sy) * scale);
+        const padR = w - (padL + ow), padB = h - (padT + oh);
+        if (fillMode === 'vibrant') {
+          // extend the overlap's edge pixels into each pad, BLURRED + overscanned
+          const blur = Math.max(3, Math.round(Math.min(w, h) * 0.025)), m = blur * 2;
+          ctx.filter = 'blur(' + blur + 'px)';
+          if (padL > 0) ctx.drawImage(image, sx, sy, 1, ey - sy, -m, padT, padL + m, oh);                  // left
+          if (padR > 0) ctx.drawImage(image, ex - 1, sy, 1, ey - sy, padL + ow, padT, padR + m, oh);       // right
+          if (padT > 0) ctx.drawImage(image, sx, sy, ex - sx, 1, padL, -m, ow, padT + m);                  // top
+          if (padB > 0) ctx.drawImage(image, sx, ey - 1, ex - sx, 1, padL, padT + oh, ow, padB + m);       // bottom
+          if (padL > 0 && padT > 0) ctx.drawImage(image, sx, sy, 1, 1, -m, -m, padL + m, padT + m);                        // TL
+          if (padR > 0 && padT > 0) ctx.drawImage(image, ex - 1, sy, 1, 1, padL + ow, -m, padR + m, padT + m);             // TR
+          if (padL > 0 && padB > 0) ctx.drawImage(image, sx, ey - 1, 1, 1, -m, padT + oh, padL + m, padB + m);             // BL
+          if (padR > 0 && padB > 0) ctx.drawImage(image, ex - 1, ey - 1, 1, 1, padL + ow, padT + oh, padR + m, padB + m);  // BR
+          ctx.filter = 'none';
+        } else {
+          ctx.fillStyle = toHex(fillValue()) || '#808080'; ctx.fillRect(0, 0, w, h);
+        }
+        ctx.drawImage(image, sx, sy, ex - sx, ey - sy, padL, padT, ow, oh);   // image overlap on top
+        return { w, h };
+      }
       if (L.expand) {
         const dx = Math.round(L.dx * scale), dy = Math.round(L.dy * scale);
         const iw = Math.round(nW * scale), ih = Math.round(nH * scale);
@@ -909,23 +1244,32 @@
     }
 
     // Grid overlay (hover layer) for a given line geometry, sized dW×dH.
-    function drawGrid(vFrac, vOff, hFrac, hOff, dW, dH) {
+    // Grid overlay sized dW×dH. An optional rect (canvas px) confines the lines
+    // to a sub-region — used for the MANUAL window so the grid tracks it.
+    function drawGrid(vFrac, vOff, hFrac, hOff, dW, dH, rect) {
       gridC.width = dW; gridC.height = dH;
       const g = gridC.getContext('2d');
       g.clearRect(0, 0, dW, dH);
       g.lineWidth = 1;
-      g.strokeStyle = loaded.estimated ? 'rgba(0,240,255,0.75)' : 'rgba(252,238,10,0.85)';
+      g.strokeStyle = view().estimated ? 'rgba(0,240,255,0.75)' : 'rgba(252,238,10,0.85)';
+      const rx = rect ? rect.x : 0, ry = rect ? rect.y : 0, rw = rect ? rect.w : dW, rh = rect ? rect.h : dH;
       g.beginPath();
-      for (let f = vOff % vFrac; f <= 1.0001; f += vFrac) { const x = Math.round(f * dW) + 0.5; g.moveTo(x, 0); g.lineTo(x, dH); }
-      for (let f = hOff % hFrac; f <= 1.0001; f += hFrac) { const y = Math.round(f * dH) + 0.5; g.moveTo(0, y); g.lineTo(dW, y); }
+      for (let f = vOff % vFrac; f <= 1.0001; f += vFrac) { const x = Math.round(rx + f * rw) + 0.5; g.moveTo(x, ry); g.lineTo(x, ry + rh); }
+      for (let f = hOff % hFrac; f <= 1.0001; f += hFrac) { const y = Math.round(ry + f * rh) + 0.5; g.moveTo(rx, y); g.lineTo(rx + rw, y); }
       g.stroke();
     }
     function setReadout(cols, rows) {
-      if (!gridSize) return;
-      gridSize.textContent = (loaded.estimated ? '≈ ' : '') + cols + ' × ' + rows;
-      gridSize.classList.toggle('estimated', loaded.estimated);
-      gridSize.title = (loaded.estimated ? 'estimated (no clear grid found)' : 'detected grid')
-        + ' — confidence ' + (loaded.confidence || 0).toFixed(2) + (fixEdges ? ' · ' + edgeMode : '');
+      const est = view().estimated;
+      if (colVal) colVal.textContent = cols;
+      if (rowVal) rowVal.textContent = rows;
+      // headline: the resulting size — what the export will be (reflects manual
+      // edits and crop/expand) + the detection accuracy (confidence)
+      if (calcVal) calcVal.textContent = cols + '×' + rows;
+      if (calcSize) calcSize.classList.toggle('estimated', est);
+      if (accVal) accVal.textContent = loaded.estimated ? '—' : Math.round((loaded.confidence || 0) * 100) + '%';
+      if (offXVal) offXVal.textContent = Math.round(offX);
+      if (offYVal) offYVal.textContent = Math.round(offY);
+      syncFactorButtons();   // refresh ÷ availability for the new grid size
     }
 
     // Live preview. CROP mode is special: show the FULL image with the
@@ -934,8 +1278,35 @@
     // EXPAND / no-fix paint the actual result.
     function renderDisplay() {
       if (!loaded) return;
+      saveManual();   // keep the MANUAL state in localStorage in sync with the view
       const image = loaded.image, nW = image.naturalWidth, nH = image.naturalHeight;
       const L = computeLayout();
+      if (L.win) {                              // MANUAL: window slid over the image
+        const wx = L.win.x, wy = L.win.y, ww = L.win.w, wh = L.win.h;
+        const ux0 = Math.min(0, wx), uy0 = Math.min(0, wy);
+        const uW = Math.max(nW, wx + ww) - ux0, uH = Math.max(nH, wy + wh) - uy0;
+        const scale = Math.min(1, DISPLAY_MAX / Math.max(uW, uH));
+        const dW = Math.max(1, Math.round(uW * scale)), dH = Math.max(1, Math.round(uH * scale));
+        mapC.width = dW; mapC.height = dH;
+        const ctx = mapC.getContext('2d');
+        ctx.clearRect(0, 0, dW, dH);
+        const ix = Math.round((0 - ux0) * scale), iy = Math.round((0 - uy0) * scale);
+        const iw = Math.round(nW * scale), ih = Math.round(nH * scale);
+        ctx.drawImage(image, 0, 0, nW, nH, ix, iy, iw, ih);          // full image…
+        ctx.fillStyle = 'rgba(8,8,10,0.64)';                         // …greyed (trimmed)
+        ctx.fillRect(ix, iy, iw, ih);
+        // render the window itself (image + selected fill in the off-image area)
+        // through paint() so the preview matches the exported PNG exactly
+        const off = document.createElement('canvas');
+        paint(off, L, scale);
+        const wX = Math.round((wx - ux0) * scale), wY = Math.round((wy - uy0) * scale);
+        ctx.drawImage(off, wX, wY);
+        ctx.strokeStyle = 'rgba(0,240,255,0.95)'; ctx.lineWidth = 2; // window delimiter
+        ctx.strokeRect(wX, wY, off.width, off.height);
+        drawGrid(L.vFrac, L.vOff, L.hFrac, L.hOff, dW, dH, { x: wX, y: wY, w: off.width, h: off.height });
+        setReadout(L.cols, L.rows);
+        return;
+      }
       if (fixEdges && edgeMode === 'crop' && L.src) {
         const scale = Math.min(1, DISPLAY_MAX / Math.max(nW, nH));
         const dW = Math.max(1, Math.round(nW * scale)), dH = Math.max(1, Math.round(nH * scale));
@@ -951,7 +1322,8 @@
         ctx.strokeStyle = 'rgba(0,240,255,0.95)'; // crop delimiter (kept region)
         ctx.lineWidth = 2;
         ctx.strokeRect(kx, ky, kw, kh);
-        drawGrid(loaded.vFrac, loaded.vOff, loaded.hFrac, loaded.hOff, dW, dH);
+        const v = view();
+        drawGrid(v.vFrac, v.vOff, v.hFrac, v.hOff, dW, dH);
         setReadout(L.cols, L.rows);
         return;
       }

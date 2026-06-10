@@ -1,4 +1,4 @@
-<!-- GRIDMAP v0.2.3 -->
+<!-- GRIDMAP v0.2.4 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -162,6 +162,61 @@
     text-transform: uppercase; font-weight: 700; margin-bottom: 12px;
   }
   .config .hint { color: var(--dim); font-size: 12px; line-height: 1.6; }
+  /* PNG export button — same look as chronos/commlink (.btn) */
+  .btn {
+    --btn-color: var(--accent);
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    height: 44px; padding: 0 16px;
+    background: transparent; color: var(--btn-color);
+    font-family: 'JetBrains Mono', monospace; font-size: 14px; line-height: 1;
+    letter-spacing: 3px; text-transform: uppercase; cursor: pointer; border: none;
+    transition: background .15s, color .15s, box-shadow .15s, opacity .15s;
+    --aug-border-all: 1px; --aug-border-bg: var(--btn-color);
+    --aug-inlay-all: 0px; --aug-inlay-bg: transparent;
+    --aug-tl: 12px; --aug-br: 12px;
+  }
+  .btn:hover { background: color-mix(in srgb, var(--btn-color) 22%, transparent); box-shadow: 0 0 12px color-mix(in srgb, var(--btn-color) 45%, transparent); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; background: transparent; box-shadow: none; }
+  .config .export-btn { width: 100%; margin-top: 16px; }
+  /* Sliding two-state toggle — ported from chronos/commlink .side-switch */
+  .fx-toggle { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; }
+  .fx-label { font-size: 12px; letter-spacing: 1.5px; color: var(--main); text-transform: uppercase; }
+  .side-switch {
+    position: relative; height: 30px; width: 112px; background: var(--panel);
+    border: 1px solid rgba(var(--main-rgb), 0.3); cursor: pointer;
+    display: flex; align-items: stretch; overflow: hidden; flex-shrink: 0;
+    font-family: 'JetBrains Mono', monospace; transition: border-color .15s;
+  }
+  .side-switch:hover { border-color: var(--main); }
+  .side-switch .thumb {
+    position: absolute; top: 0; left: 0; width: 50%; height: 100%;
+    background: color-mix(in srgb, var(--main) 22%, transparent);
+    transition: transform .22s cubic-bezier(.4, 0, .2, 1); z-index: 0;
+  }
+  .side-switch[data-pos="right"] .thumb { transform: translateX(100%); }
+  .side-switch .lab {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; letter-spacing: 1px; z-index: 1; position: relative;
+    pointer-events: none; color: var(--dim); transition: color .15s .08s;
+  }
+  .side-switch[data-pos="left"] .lab.l,
+  .side-switch[data-pos="right"] .lab.r { color: var(--main); }
+  .fx-toggle.disabled { opacity: .4; pointer-events: none; }
+  /* fill-colour swatch: a clickable augmented-ui rectangle hiding a colour input */
+  .fill-group { display: flex; align-items: center; gap: 6px; }
+  .fill-swatch {
+    width: 80px; height: 30px; cursor: pointer; border: none; padding: 0;
+    --aug-border-all: 1px; --aug-border-bg: rgba(255, 255, 255, 0.55);
+    --aug-tl: 8px; --aug-br: 8px;
+  }
+  /* the real colour input is off-screen; the swatch opens it via showPicker() */
+  .fill-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  .fill-reset {
+    width: 28px; height: 30px; background: transparent; color: var(--dim);
+    border: 1px solid rgba(var(--main-rgb), 0.3); cursor: pointer; font-size: 14px; line-height: 1;
+    transition: color .12s, border-color .12s;
+  }
+  .fill-reset:hover { color: var(--main); border-color: var(--main); }
   .workspace { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
   /* NN x MM size readout on top of the working area */
   .size-readout {
@@ -220,7 +275,7 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.2.3</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.2.4</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
@@ -251,7 +306,28 @@
     <!-- RIGHT config (export — TODO) -->
     <aside class="config config-right" data-augmented-ui="tl-clip br-clip border">
       <h2>// EXPORT</h2>
-      <p class="hint">Crop-to-whole-cells &amp; PNG export land here. Output is named with its NNxMM size.</p>
+      <p class="hint">Save the map as a PNG, named with its NN×MM size.</p>
+      <div class="fx-toggle">
+        <span class="fx-label">// FIX EDGES:</span>
+        <button class="side-switch" id="fixEdgesToggle" type="button" data-pos="left" aria-label="fix partial edge cells">
+          <span class="thumb"></span><span class="lab l">OFF</span><span class="lab r">ON</span>
+        </button>
+      </div>
+      <div class="fx-toggle" id="modeRow">
+        <span class="fx-label">// PARTIAL:</span>
+        <button class="side-switch" id="modeToggle" type="button" data-pos="left" aria-label="partial cell handling">
+          <span class="thumb"></span><span class="lab l">CROP</span><span class="lab r">EXPAND</span>
+        </button>
+      </div>
+      <div class="fx-toggle" id="fillRow">
+        <span class="fx-label">// FILL:</span>
+        <span class="fill-group">
+          <button class="fill-swatch" id="fillSwatch" type="button" data-augmented-ui="tl-clip br-clip border" title="partial-cell fill colour — click to pick"></button>
+          <button class="fill-reset" id="fillReset" type="button" title="reset to detected colour">↺</button>
+          <input type="color" id="fillColor" class="fill-input" aria-label="fill colour" />
+        </span>
+      </div>
+      <button class="btn export-btn" data-augmented-ui="tl-clip br-clip both" id="exportBtn" type="button" disabled>⬇ SAVE PNG</button>
     </aside>
   </div>
 </div>
@@ -325,7 +401,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v0.2.3';
+    const VER = ' // v0.2.4';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 
@@ -588,8 +664,10 @@
   // ---- Working-area image import + analysis (drag-drop / paste / click) ----
   (function setupImport() {
     const zone = $('dropzone'), mapC = $('mapCanvas'), gridC = $('gridCanvas'),
-      input = $('fileInput'), gridSize = $('gridSize');
+      input = $('fileInput'), gridSize = $('gridSize'), exportBtn = $('exportBtn');
     if (!zone || !mapC || !gridC || !input) return;
+    let loaded = null;        // current map + detected grid geometry, for PNG export
+    let autoFill = '#808080'; // detected primary (border) colour of the current map
 
     function onImage(image) {
       const nW = image.naturalWidth, nH = image.naturalHeight;
@@ -643,6 +721,10 @@
           + ' — confidence ' + res.confidence.toFixed(2);
       }
       zone.classList.add('has-image');
+      loaded = { image, cols, rows, vFrac, vOff, hFrac, hOff };
+      autoFill = edgeColor(image);   // detected primary colour for the fill swatch
+      refreshFill();
+      if (exportBtn) exportBtn.disabled = false;
     }
 
     // persist !== false → a fresh user import, so save it to IndexedDB.
@@ -667,6 +749,138 @@
     window.addEventListener('paste', (e) => {
       const item = [...(e.clipboardData.items || [])].find((i) => i.type.startsWith('image/'));
       if (item) load(item.getAsFile());
+    });
+
+    // ---- Export settings: edge-fix toggles + fill colour (all persisted) ----
+    const fixEdgesToggle = $('fixEdgesToggle'), modeToggle = $('modeToggle'), modeRow = $('modeRow'),
+      fillRow = $('fillRow'), fillSwatch = $('fillSwatch'), fillColor = $('fillColor'), fillReset = $('fillReset');
+    let fixEdges = false, edgeMode = 'crop', fillOverride = '';
+    try {
+      fixEdges = localStorage.getItem('gridmap:fixEdges') === '1';
+      if (localStorage.getItem('gridmap:edgeMode') === 'expand') edgeMode = 'expand';
+      fillOverride = toHex(localStorage.getItem('gridmap:fillColor') || '');
+    } catch (e) { /* storage blocked */ }
+    const save = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+
+    // Average colour of the image's border ring (hex) — the detected "primary".
+    function edgeColor(image) {
+      const s = 48, c = document.createElement('canvas'); c.width = s; c.height = s;
+      const x = c.getContext('2d', { willReadFrequently: true });
+      x.drawImage(image, 0, 0, s, s);
+      const d = x.getImageData(0, 0, s, s).data;
+      let r = 0, g = 0, b = 0, n = 0;
+      const add = (px, py) => { const i = (py * s + px) * 4; r += d[i]; g += d[i + 1]; b += d[i + 2]; n++; };
+      for (let i = 0; i < s; i++) { add(i, 0); add(i, s - 1); add(0, i); add(s - 1, i); }
+      const h = (v) => ('0' + Math.round(v / n).toString(16)).slice(-2);
+      return '#' + h(r) + h(g) + h(b);
+    }
+
+    // Normalise any colour (#rgb, #rrggbb[aa], rgb()/rgba()) to an OPAQUE
+    // #rrggbb. The EyeDropper can hand back "rgba(r,g,b,0)" (notably on file://
+    // origins), which is invalid for <input type=color> and would also make the
+    // fill transparent — so we drop alpha and force hex.
+    function toHex(col) {
+      if (!col) return '';
+      col = String(col).trim();
+      if (col[0] === '#') {
+        if (col.length === 4) return '#' + col[1] + col[1] + col[2] + col[2] + col[3] + col[3];
+        return col.slice(0, 7);
+      }
+      const m = col.match(/rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/i);
+      if (m) { const h = (v) => ('0' + (+v).toString(16)).slice(-2); return '#' + h(m[1]) + h(m[2]) + h(m[3]); }
+      return '';
+    }
+
+    // Effective fill for EXPAND: the user's override, else the detected primary.
+    function fillValue() { return fillOverride || autoFill; }
+    function refreshFill() {
+      const v = toHex(fillValue()) || '#808080';
+      if (fillSwatch) fillSwatch.style.background = v;
+      if (fillColor) fillColor.value = v;
+    }
+
+    function syncToggles() {
+      if (fixEdgesToggle) fixEdgesToggle.dataset.pos = fixEdges ? 'right' : 'left';
+      if (modeToggle) modeToggle.dataset.pos = edgeMode === 'expand' ? 'right' : 'left';
+      if (modeRow) modeRow.classList.toggle('disabled', !fixEdges);
+      if (fillRow) fillRow.classList.toggle('disabled', !(fixEdges && edgeMode === 'expand'));
+    }
+    if (fixEdgesToggle) fixEdgesToggle.addEventListener('click', () => {
+      fixEdges = !fixEdges; save('gridmap:fixEdges', fixEdges ? '1' : '0'); syncToggles();
+    });
+    if (modeToggle) modeToggle.addEventListener('click', () => {
+      edgeMode = edgeMode === 'expand' ? 'crop' : 'expand'; save('gridmap:edgeMode', edgeMode); syncToggles();
+    });
+    function setFill(color) {
+      const hex = toHex(color);
+      if (!hex) return;
+      fillOverride = hex; save('gridmap:fillColor', hex); refreshFill();
+    }
+    // The swatch is a PIPETTE: sample any on-screen pixel (incl. the loaded
+    // map) with the EyeDropper API — a magnifier that returns the exact pixel
+    // colour. Falls back to the native colour input where EyeDropper is absent.
+    if (fillSwatch) fillSwatch.addEventListener('click', async () => {
+      if (window.EyeDropper) {
+        try { const r = await new EyeDropper().open(); setFill(r.sRGBHex); } catch (e) { /* cancelled */ }
+        return;
+      }
+      try { if (fillColor && fillColor.showPicker) { fillColor.showPicker(); return; } } catch (e) {}
+      if (fillColor) fillColor.click();
+    });
+    ['input', 'change'].forEach((ev) => fillColor && fillColor.addEventListener(ev, () => setFill(fillColor.value)));
+    if (fillReset) fillReset.addEventListener('click', () => {
+      fillOverride = ''; try { localStorage.removeItem('gridmap:fillColor'); } catch (e) {}
+      refreshFill();
+    });
+    syncToggles();
+    refreshFill();
+
+    // Canvas to export, applying the chosen edge fix. → { canvas, cols, rows }.
+    function exportCanvas() {
+      const { image, cols, rows, vFrac, vOff, hFrac, hOff } = loaded;
+      const nW = image.naturalWidth, nH = image.naturalHeight;
+      const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
+      if (!fixEdges) { const c = mk(nW, nH); c.getContext('2d').drawImage(image, 0, 0); return { canvas: c, cols, rows }; }
+
+      const cellW = vFrac * nW, cellH = hFrac * nH, offX = vOff * nW, offY = hOff * nH;
+      const nCols = Math.max(1, Math.floor((nW - offX) / cellW + 1e-6));
+      const nRows = Math.max(1, Math.floor((nH - offY) / cellH + 1e-6));
+
+      if (edgeMode === 'crop') {
+        const sx = Math.round(offX), sy = Math.round(offY);
+        const cw = Math.min(Math.round(nCols * cellW), nW - sx), ch = Math.min(Math.round(nRows * cellH), nH - sy);
+        const c = mk(cw, ch);
+        c.getContext('2d').drawImage(image, sx, sy, cw, ch, 0, 0, cw, ch);
+        return { canvas: c, cols: nCols, rows: nRows };
+      }
+      // expand: pad partial edge cells out to whole cells, fill with edge colour
+      const rPart = nW - (offX + nCols * cellW), bPart = nH - (offY + nRows * cellH);
+      const leftPad = offX > 0.5 ? cellW - offX : 0, rightPad = rPart > 0.5 ? cellW - rPart : 0;
+      const topPad = offY > 0.5 ? cellH - offY : 0, botPad = bPart > 0.5 ? cellH - bPart : 0;
+      const eCols = nCols + (leftPad > 0 ? 1 : 0) + (rightPad > 0 ? 1 : 0);
+      const eRows = nRows + (topPad > 0 ? 1 : 0) + (botPad > 0 ? 1 : 0);
+      const cw = Math.round(eCols * cellW), ch = Math.round(eRows * cellH);
+      const c = mk(cw, ch), ctx = c.getContext('2d');
+      ctx.fillStyle = fillValue(); ctx.fillRect(0, 0, cw, ch);
+      ctx.drawImage(image, Math.round(leftPad), Math.round(topPad));
+      return { canvas: c, cols: eCols, rows: eRows };
+    }
+
+    // PNG export: re-encode (full-res) to PNG, named with the resulting size.
+    if (exportBtn) exportBtn.addEventListener('click', () => {
+      if (!loaded) return;
+      const out = exportCanvas();
+      out.canvas.toBlob((blob) => {
+        if (!blob) return;
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'gridmap_' + out.cols + 'x' + out.rows + '.png';
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+        const prev = exportBtn.textContent;
+        exportBtn.textContent = '✓ SAVED';
+        setTimeout(() => { exportBtn.textContent = prev; }, 1400);
+      }, 'image/png');
     });
 
     // Restore the previously loaded map (re-runs analysis + overlay).

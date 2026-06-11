@@ -11,4 +11,3 @@ Items are removed from the list once they are implemented / resolved (no archive
 
 1. Update preview png
 2. Remove existing canvas controls
-3. "Random 3" button to run algoritm using random 3 regions on the map

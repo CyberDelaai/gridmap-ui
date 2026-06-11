@@ -1,4 +1,4 @@
-<!-- GRIDMAP v0.4.8 -->
+<!-- GRIDMAP v0.4.9 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -227,7 +227,7 @@
   /* // DETECTION: the [AUTO] [SELECT] button pair */
   .detect-group { display: flex; flex-direction: column; gap: 8px; }
   .detect-btns { display: flex; gap: 8px; }
-  .detect-btn { flex: 1; height: 38px; letter-spacing: 2px; }
+  .detect-btn { flex: 1; min-width: 0; height: 38px; letter-spacing: 2px; white-space: nowrap; }
   .btn.detect-btn.active { background: color-mix(in srgb, var(--btn-color) 28%, transparent); box-shadow: 0 0 12px color-mix(in srgb, var(--btn-color) 50%, transparent); }
   /* resulting size (NN×MM) shown in the // EXPORT panel, above SAVE PNG */
   .config .calc-size {
@@ -352,7 +352,7 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.4.8</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.4.9</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
@@ -365,13 +365,14 @@
       <div class="topbar">
         <div class="detect-group">          
           <div class="detect-btns">
-            <button class="btn detect-btn" id="autoBtn" type="button" data-augmented-ui="tl-clip br-clip both">AUTO</button>
-            <button class="btn detect-btn" id="selectBtn" type="button" data-augmented-ui="tl-clip br-clip both">SELECT</button>
+            <button class="btn detect-btn" id="autoBtn" type="button" data-augmented-ui="tl-clip br-clip both" title="Runs the automatic 5-point (quincunx) detection.">AUTO</button>
+            <button class="btn detect-btn" id="selectBtn" type="button" data-augmented-ui="tl-clip br-clip both" title="Choose the area(s) for grid detection — hold Ctrl to pick multiple.">SELECT</button>
+          </div>
+          <div class="detect-btns">
+            <button class="btn detect-btn" id="randomBtn" type="button" data-augmented-ui="tl-clip br-clip both" title="Samples 3 random areas to detect from — click again to re-roll.">RANDOM 3</button>
           </div>
         </div>
       </div>
-      <p class="hint">AUTO runs the automatic 5-point detection.</p> 
-      <p class="hint">SELECT lets you choose area for grid detection (Ctrl for multiple selection)</p>
       <h2 class="canvas-h2">// CANVAS</h2>
       <div class="canvas-controls">
         <div class="dpad" role="group" aria-label="move canvas window over the image">
@@ -542,7 +543,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v0.4.8';
+    const VER = ' // v0.4.9';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 
@@ -908,7 +909,7 @@
     const fixEdgesToggle = $('fixEdgesToggle'), modeToggle = $('modeToggle'), modeRow = $('modeRow'),
       fillRow = $('fillRow'), fillSwatch = $('fillSwatch'), fillVibrant = $('fillVibrant'),
       fillColor = $('fillColor');
-    const autoBtn = $('autoBtn'), selectBtn = $('selectBtn'), colVal = $('colVal'), rowVal = $('rowVal'),
+    const autoBtn = $('autoBtn'), selectBtn = $('selectBtn'), randomBtn = $('randomBtn'), colVal = $('colVal'), rowVal = $('rowVal'),
       calcSize = $('calcSize'), calcVal = $('calcVal'), panReset = $('panReset');
     let fixEdges = false, edgeMode = 'crop', fillOverride = '', fillMode = 'vibrant';
     let manual = false, winC0 = 0, winR0 = 0, winC1 = 0, winR1 = 0;   // MANUAL window, in grid-cell indices
@@ -1141,6 +1142,30 @@
       syncAutoMode(); renderDisplay();
     }
     if (autoBtn) autoBtn.addEventListener('click', runAuto);
+    // RANDOM 3: detect from 3 randomly-placed square probe areas (each ~half the
+    // short side). Each click re-rolls — handy when AUTO's fixed 5-point layout
+    // lands on labels/legends/blank margins instead of the grid.
+    function randomRegions(n) {
+      const nW = loaded.image.naturalWidth, nH = loaded.image.naturalHeight;
+      const minDim = Math.min(nW, nH), out = [];
+      for (let i = 0; i < n; i++) {
+        const side = Math.round(minDim * (0.4 + Math.random() * 0.2));   // 40–60% of the short side
+        const w = Math.min(side, nW), h = Math.min(side, nH);
+        out.push({ x: Math.round(Math.random() * (nW - w)), y: Math.round(Math.random() * (nH - h)), w: w, h: h });
+      }
+      return out;
+    }
+    function runRandom() {
+      if (!loaded) return;
+      selecting = false; regions = []; dragStart = null; dragRect = null;   // leave region-pick
+      zone.classList.remove('selecting');
+      detectGrid(randomRegions(3));
+      manual = false; offX = 0; offY = 0;
+      gCols = loaded.cols; gRows = loaded.rows;
+      applyAutoFix();
+      syncAutoMode(); renderDisplay();
+    }
+    if (randomBtn) randomBtn.addEventListener('click', runRandom);
 
     // Live d-pad icons: < > ^ v (and \ /), doubled while CTRL is held (expand),
     // flipped while SHIFT is held (reverse).

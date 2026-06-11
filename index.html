@@ -1,10 +1,10 @@
-<!-- GRIDMAP v1.1.2 -->
+<!-- GRIDMAP v1.1.3 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>GRIDMAP — Cyberpunk Battle-Map Grid Detector</title>
+<title>GRIDMAP — TTRPG Battle-Map Grid Detector</title>
 <meta name="description" content="GRIDMAP is a free in-browser tool that detects the grid on any battle-map image and reports its size (e.g. 23×54). Drop in a map; if it has no visible grid, GRIDMAP estimates the best cell count. Export a clean PNG cropped to whole cells — built for TTRPG game masters prepping maps for virtual tabletops." />
 <meta name="keywords" content="cyberpunk, battle map, grid, grid detector, map grid size, square counter, cell counter, vtt, roll20, foundry vtt, ttrpg, gm tools, cyberpunk 2077, shadowrun, png export, map analyzer" />
 <meta name="author" content="CyberDelaai" />
@@ -19,16 +19,16 @@
 <!-- Open Graph / Twitter -->
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="GRIDMAP" />
-<meta property="og:title" content="GRIDMAP — Cyberpunk Battle-Map Grid Detector" />
+<meta property="og:title" content="GRIDMAP — TTRPG Battle-Map Grid Detector" />
 <meta property="og:description" content="Detect the grid on any battle-map image and read its NxM size in your browser. Crop to whole cells and export a clean PNG. Perfect for TTRPG VTT prep." />
 <meta property="og:url" content="https://cyberdeck.tools/gridmap-ui/" />
 <meta property="og:image" content="https://cyberdeck.tools/gridmap-ui/gridmap_thumbnail.png" />
 <meta property="og:image:type" content="image/png" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
-<meta property="og:image:alt" content="GRIDMAP — cyberpunk battle-map grid detector preview" />
+<meta property="og:image:alt" content="GRIDMAP — ttrpg battle-map grid detector preview" />
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="GRIDMAP — Cyberpunk Battle-Map Grid Detector" />
+<meta name="twitter:title" content="GRIDMAP — TTRPG Battle-Map Grid Detector" />
 <meta name="twitter:description" content="Detect a battle map's grid, read its NxM size, crop to whole cells, and export a clean PNG." />
 <meta name="twitter:image" content="https://cyberdeck.tools/gridmap-ui/gridmap_thumbnail.png" />
 
@@ -38,7 +38,7 @@
   "@type": "WebApplication",
   "name": "GRIDMAP",
   "alternateName": "GRIDMAP Grid Detector",
-  "description": "Cyberpunk Battle-Map Grid Detector — analyze a battle-/region-map image in the browser to detect its grid and report the cell count (NxM). Estimates the grid when none is visible, crops partial outer cells, and exports a clean PNG. Useful for TTRPG game masters running Shadowrun, Cyberpunk 2020, or Cyberpunk RED who prep maps for virtual tabletops.",
+  "description": "TTRPG Battle-Map Grid Detector — analyze a battle-/region-map image in the browser to detect its grid and report the cell count (NxM). Estimates the grid when none is visible, crops partial outer cells, and exports a clean PNG. Useful for TTRPG game masters running Shadowrun, Cyberpunk 2020, or Cyberpunk RED who prep maps for virtual tabletops.",
   "applicationCategory": "UtilitiesApplication",
   "applicationSubCategory": "Map Grid Detector",
   "operatingSystem": "Any (browser-based)",
@@ -314,7 +314,7 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable" data-i18n="tag">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">1.1.2</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable" data-i18n="tag">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">1.1.3</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
@@ -611,7 +611,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v1.1.2';
+    const VER = ' // v1.1.3';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 

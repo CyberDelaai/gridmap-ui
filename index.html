@@ -1,4 +1,4 @@
-<!-- GRIDMAP v1.1.1 -->
+<!-- GRIDMAP v1.1.2 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -22,7 +22,7 @@
 <meta property="og:title" content="GRIDMAP — Cyberpunk Battle-Map Grid Detector" />
 <meta property="og:description" content="Detect the grid on any battle-map image and read its NxM size in your browser. Crop to whole cells and export a clean PNG. Perfect for TTRPG VTT prep." />
 <meta property="og:url" content="https://cyberdeck.tools/gridmap-ui/" />
-<meta property="og:image" content="https://cyberdeck.tools/gridmap-ui/og-preview.png" />
+<meta property="og:image" content="https://cyberdeck.tools/gridmap-ui/gridmap_thumbnail.png" />
 <meta property="og:image:type" content="image/png" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
@@ -30,7 +30,7 @@
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="GRIDMAP — Cyberpunk Battle-Map Grid Detector" />
 <meta name="twitter:description" content="Detect a battle map's grid, read its NxM size, crop to whole cells, and export a clean PNG." />
-<meta name="twitter:image" content="https://cyberdeck.tools/gridmap-ui/og-preview.png" />
+<meta name="twitter:image" content="https://cyberdeck.tools/gridmap-ui/gridmap_thumbnail.png" />
 
 <script type="application/ld+json">
 {
@@ -44,7 +44,7 @@
   "operatingSystem": "Any (browser-based)",
   "browserRequirements": "Modern desktop browser",
   "url": "https://cyberdeck.tools/gridmap-ui/",
-  "image": "https://raw.githubusercontent.com/CyberDelaai/gridmap-ui/main/og-preview.png",
+  "image": "https://raw.githubusercontent.com/CyberDelaai/gridmap-ui/main/gridmap_thumbnail.png",
   "keywords": "cyberpunk, battle map, grid detector, map grid size, vtt, roll20, foundry vtt, ttrpg, game master tools, png export, netrunner",
   "author": {
     "@type": "Person",
@@ -314,7 +314,7 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable" data-i18n="tag">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">1.1.1</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable" data-i18n="tag">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">1.1.2</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
@@ -611,7 +611,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v1.1.1';
+    const VER = ' // v1.1.2';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 

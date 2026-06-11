@@ -8,5 +8,3 @@ Items are removed from the list once they are implemented / resolved (no archive
 
 
 ## SMALL (Z version bump)
-
-1. Update preview png

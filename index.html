@@ -1,4 +1,4 @@
-<!-- GRIDMAP v1.0.0 -->
+<!-- GRIDMAP v1.1.0 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -198,7 +198,7 @@
   .side-switch .lab {
     flex: 1; display: flex; align-items: center; justify-content: center;
     font-size: 11px; font-weight: 700; letter-spacing: 1px; z-index: 1; position: relative;
-    pointer-events: none; color: var(--dim); transition: color .15s .08s;
+    pointer-events: none; white-space: nowrap; color: var(--dim); transition: color .15s .08s;
   }
   .side-switch[data-pos="left"] .lab.l,
   .side-switch[data-pos="right"] .lab.r { color: var(--main); }
@@ -314,25 +314,25 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">1.0.0</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable" data-i18n="tag">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">1.1.0</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
   <div class="layout">
     <!-- LEFT config — grid mode + manual cell-count controls -->
     <aside class="config config-left" data-augmented-ui="tl-clip br-clip border">
-      <h2>// IMAGE</h2>
-      <button class="btn import-btn" id="importBtn" type="button" data-augmented-ui="tl-clip br-clip both">⬆ IMPORT IMAGE</button>            
-      <h2>// GRID DETECTION:</h2>
+      <h2 data-i18n="h_image">// IMAGE</h2>
+      <button class="btn import-btn" id="importBtn" type="button" data-augmented-ui="tl-clip br-clip both" data-i18n="b_import">⬆ IMPORT IMAGE</button>
+      <h2 data-i18n="h_detect">// GRID DETECTION:</h2>
       <div class="topbar">
-        <div class="detect-group">          
+        <div class="detect-group">
           <div class="detect-btns">
-            <button class="btn detect-btn" id="autoBtn" type="button" data-augmented-ui="tl-clip br-clip both" title="Runs the automatic 5-point (quincunx) detection.">AUTO</button>
-            <button class="btn detect-btn" id="selectBtn" type="button" data-augmented-ui="tl-clip br-clip both" title="Choose the area(s) for grid detection — hold Ctrl to pick multiple.">SELECT</button>
+            <button class="btn detect-btn" id="autoBtn" type="button" data-augmented-ui="tl-clip br-clip both" data-i18n="b_auto" data-i18n-title="t_auto">AUTO</button>
+            <button class="btn detect-btn" id="selectBtn" type="button" data-augmented-ui="tl-clip br-clip both" data-i18n="b_select" data-i18n-title="t_select">SELECT</button>
           </div>
           <div class="detect-btns">
-            <button class="btn detect-btn" id="randomBtn" type="button" data-augmented-ui="tl-clip br-clip both" title="Samples 3 random areas to detect from — click again to re-roll.">RANDOM 3</button>
-            <button class="btn detect-btn" id="cellBtn" type="button" data-augmented-ui="tl-clip br-clip both" title="Drag a box around any 2×2 block of cells; the grid is detected at that cell size (the more precisely you align it, the better).">4 CELLS</button>
+            <button class="btn detect-btn" id="randomBtn" type="button" data-augmented-ui="tl-clip br-clip both" data-i18n="b_random" data-i18n-title="t_random">RANDOM 3</button>
+            <button class="btn detect-btn" id="cellBtn" type="button" data-augmented-ui="tl-clip br-clip both" data-i18n="b_cells" data-i18n-title="t_cells">4 CELLS</button>
           </div>
         </div>
       </div>
@@ -342,9 +342,9 @@
     <main class="workspace">
       <div class="dropzone" id="dropzone" aria-label="drop a map image">
         <div class="placeholder">
-          <b>DROP A MAP IMAGE HERE</b><br />
-          drag &amp; drop · paste · or click to browse<br />
-          GRIDMAP reads the grid and reports its <b>NN&times;MM</b> size
+          <b data-i18n="ph_title">DROP A MAP IMAGE HERE</b><br />
+          <span data-i18n="ph_sub">drag &amp; drop · paste · or click to browse</span><br />
+          <span data-i18n="ph_desc">GRIDMAP reads the grid and reports its NN×MM size</span>
         </div>
         <div class="canvas-wrap" id="canvasWrap">
           <canvas id="mapCanvas" aria-label="loaded map"></canvas>
@@ -355,38 +355,38 @@
       </div>
       <div class="canvas-footer">
         <span class="canvas-hint">
-          <span>// Click to toggle detected grid</span>
-          <span>// Ctrl+click to zoom in, Ctrl+right-click to zoom out</span>
+          <span data-i18n="hint_toggle">// Click to toggle detected grid</span>
+          <span data-i18n="hint_zoom">// Ctrl+click to zoom in, Ctrl+right-click to zoom out</span>
         </span>
         <div class="zoom-bar">
           <button class="zoom-btn" id="zoomOut" type="button" aria-label="zoom out">−</button>
           <span class="zoom-val" id="zoomVal">100%</span>
           <button class="zoom-btn" id="zoomIn" type="button" aria-label="zoom in">+</button>
-          <button class="zoom-btn reset" id="zoomReset" type="button" aria-label="reset zoom to 100%" title="reset zoom to 100%">↺</button>
+          <button class="zoom-btn reset" id="zoomReset" type="button" aria-label="reset zoom to 100%" title="reset zoom to 100%" data-i18n-title="t_zoomreset">↺</button>
         </div>
       </div>
     </main>
 
     <!-- RIGHT config (export — TODO) -->
     <aside class="config config-right" data-augmented-ui="tl-clip br-clip border">
-      <h2>// EXPORT</h2>
-      <p class="hint">Save the map as a PNG, named with its NN×MM size.</p>
+      <h2 data-i18n="h_export">// EXPORT</h2>
+      <p class="hint" data-i18n="export_hint">Save the map as a PNG, named with its NN×MM size.</p>
       <div class="fx-toggle" id="modeRow">
-        <span class="fx-label">// EDGES MODE:</span>
+        <span class="fx-label" data-i18n="l_edges">// EDGES MODE:</span>
         <button class="side-switch" id="modeToggle" type="button" data-pos="left" aria-label="partial cell handling">
-          <span class="thumb"></span><span class="lab l">CROP</span><span class="lab r">EXPAND</span>
+          <span class="thumb"></span><span class="lab l" data-i18n="b_crop">CROP</span><span class="lab r" data-i18n="b_expand">EXPAND</span>
         </button>
       </div>
       <div class="fx-toggle" id="fillRow">
-        <span class="fx-label">// FILL:</span>
+        <span class="fx-label" data-i18n="l_fill">// FILL:</span>
         <span class="fill-group">
-          <button class="fill-vibrant" id="fillVibrant" type="button" data-augmented-ui="tl-clip br-clip border" title="vibrant fill — extend the nearest edge into the padding"></button>
-          <button class="fill-swatch" id="fillSwatch" type="button" data-augmented-ui="tl-clip br-clip border" title="solid fill colour — click to pick (eyedropper)"></button>
+          <button class="fill-vibrant" id="fillVibrant" type="button" data-augmented-ui="tl-clip br-clip border" title="vibrant fill — extend the nearest edge into the padding" data-i18n-title="t_fillvibrant"></button>
+          <button class="fill-swatch" id="fillSwatch" type="button" data-augmented-ui="tl-clip br-clip border" title="solid fill colour — click to pick (eyedropper)" data-i18n-title="t_fillswatch"></button>
           <input type="color" id="fillColor" class="fill-input" aria-label="fill colour" />
         </span>
       </div>
-      <div class="calc-size" id="calcSize">// RESULT SIZE: <span class="calc-val" id="calcVal">??×??</span></div>
-      <button class="btn export-btn" data-augmented-ui="tl-clip br-clip both" id="exportBtn" type="button" disabled>⬇ SAVE PNG</button>
+      <div class="calc-size" id="calcSize"><span data-i18n="l_result">// RESULT SIZE:</span> <span class="calc-val" id="calcVal">??×??</span></div>
+      <button class="btn export-btn" data-augmented-ui="tl-clip br-clip both" id="exportBtn" type="button" disabled data-i18n="b_save">⬇ SAVE PNG</button>
     </aside>
   </div>
 </div>
@@ -395,6 +395,157 @@
 (function () {
   'use strict';
   const $ = (id) => document.getElementById(id);
+
+  // ---- UI translations (the top-right language picker). Brand names, the menu,
+  // the version and the NN×MM dimensions stay as-is; everything else switches. ----
+  const I18N = {
+    en: { b_import: '⬆ IMPORT IMAGE', h_image: '// IMAGE', h_detect: '// GRID DETECTION:',
+      b_auto: 'AUTO', b_select: 'SELECT', b_random: 'RANDOM 3', b_cells: '4 CELLS',
+      t_auto: 'Runs the automatic 5-point (quincunx) detection.',
+      t_select: 'Choose the area(s) for grid detection — hold Ctrl to pick multiple.',
+      t_random: 'Samples 3 random areas to detect from — click again to re-roll.',
+      t_cells: 'Drag a box around any 2×2 block of cells; the grid is detected at that cell size (the more precisely you align it, the better).',
+      ph_title: 'DROP A MAP IMAGE HERE', ph_sub: 'drag & drop · paste · or click to browse',
+      ph_desc: 'GRIDMAP reads the grid and reports its NN×MM size',
+      hint_toggle: '// Click to toggle detected grid', hint_zoom: '// Ctrl+click to zoom in, Ctrl+right-click to zoom out',
+      t_zoomreset: 'reset zoom to 100%', h_export: '// EXPORT',
+      export_hint: 'Save the map as a PNG, named with its NN×MM size.',
+      l_edges: '// EDGES MODE:', b_crop: 'CROP', b_expand: 'EXPAND', l_fill: '// FILL:',
+      t_fillvibrant: 'vibrant fill — extend the nearest edge into the padding',
+      t_fillswatch: 'solid fill colour — click to pick (eyedropper)',
+      l_result: '// RESULT SIZE:', b_save: '⬇ SAVE PNG', saved: '✓ SAVED',
+      tag: 'GRID MAP ANALYZER', tag_alt: 'DEAD CELLS' },
+    ru: { b_import: '⬆ ИМПОРТ', h_image: '// ИЗОБРАЖЕНИЕ', h_detect: '// ОПРЕДЕЛЕНИЕ СЕТКИ:',
+      b_auto: 'АВТО', b_select: 'ВЫБОР', b_random: 'СЛУЧ. 3', b_cells: '4 ЯЧЕЙКИ',
+      t_auto: 'Запускает автоматическое определение по 5 точкам.',
+      t_select: 'Выберите область(и) для определения сетки — удерживайте Ctrl для нескольких.',
+      t_random: 'Берёт 3 случайные области — нажмите ещё раз для пересчёта.',
+      t_cells: 'Обведите рамкой блок 2×2 клетки; сетка определится по этому размеру (чем точнее, тем лучше).',
+      ph_title: 'ПЕРЕТАЩИТЕ КАРТУ СЮДА', ph_sub: 'перетащите · вставьте · или нажмите для выбора',
+      ph_desc: 'GRIDMAP считывает сетку и показывает размер NN×MM',
+      hint_toggle: '// Клик — показать/скрыть сетку', hint_zoom: '// Ctrl+клик — приблизить, Ctrl+ПКМ — отдалить',
+      t_zoomreset: 'сбросить масштаб до 100%', h_export: '// ЭКСПОРТ',
+      export_hint: 'Сохранить карту в PNG с именем по размеру NN×MM.',
+      l_edges: '// КРАЯ:', b_crop: 'ОБРЕЗ', b_expand: 'РАСШИР.', l_fill: '// ЗАЛИВКА:',
+      t_fillvibrant: 'яркая заливка — продолжить ближайший край в отступ',
+      t_fillswatch: 'сплошной цвет заливки — нажмите, чтобы выбрать (пипетка)',
+      l_result: '// РАЗМЕР:', b_save: '⬇ СОХРАНИТЬ PNG', saved: '✓ СОХРАНЕНО',
+      tag: 'АНАЛИЗАТОР СЕТКИ', tag_alt: 'МЕРТВЫЕ КЛЕТКИ' },
+    fr: { b_import: '⬆ IMPORTER', h_image: '// IMAGE', h_detect: '// DÉTECTION DE GRILLE :',
+      b_auto: 'AUTO', b_select: 'ZONE', b_random: 'ALÉA. 3', b_cells: '4 CASES',
+      t_auto: 'Lance la détection automatique en 5 points (quinconce).',
+      t_select: 'Choisissez la ou les zones de détection — maintenez Ctrl pour en sélectionner plusieurs.',
+      t_random: 'Échantillonne 3 zones aléatoires — recliquez pour relancer.',
+      t_cells: 'Tracez un cadre autour d’un bloc de 2×2 cases ; la grille est détectée à cette taille (plus c’est précis, mieux c’est).',
+      ph_title: 'DÉPOSEZ UNE CARTE ICI', ph_sub: 'glisser-déposer · coller · ou cliquer pour parcourir',
+      ph_desc: 'GRIDMAP lit la grille et indique sa taille NN×MM',
+      hint_toggle: '// Cliquez pour afficher/masquer la grille', hint_zoom: '// Ctrl+clic pour zoomer, Ctrl+clic droit pour dézoomer',
+      t_zoomreset: 'réinitialiser le zoom à 100 %', h_export: '// EXPORT',
+      export_hint: 'Enregistrer la carte en PNG, nommée selon sa taille NN×MM.',
+      l_edges: '// BORDS :', b_crop: 'ROGNER', b_expand: 'ÉTENDRE', l_fill: '// REMPLISSAGE :',
+      t_fillvibrant: 'remplissage vif — étend le bord le plus proche dans la marge',
+      t_fillswatch: 'couleur de remplissage unie — cliquez pour choisir (pipette)',
+      l_result: '// TAILLE :', b_save: '⬇ ENREGISTRER PNG', saved: '✓ ENREGISTRÉ',
+      tag: 'ANALYSEUR DE GRILLE', tag_alt: 'CASES MORTES' },
+    de: { b_import: '⬆ IMPORTIEREN', h_image: '// BILD', h_detect: '// RASTERERKENNUNG:',
+      b_auto: 'AUTO', b_select: 'AUSWAHL', b_random: 'ZUFALL 3', b_cells: '4 ZELLEN',
+      t_auto: 'Startet die automatische 5-Punkt-Erkennung.',
+      t_select: 'Bereich(e) für die Rastererkennung wählen — Strg halten für mehrere.',
+      t_random: 'Nimmt 3 zufällige Bereiche — erneut klicken zum Neuwürfeln.',
+      t_cells: 'Ziehen Sie einen Rahmen um einen 2×2-Zellenblock; das Raster wird in dieser Zellgröße erkannt (je genauer, desto besser).',
+      ph_title: 'KARTENBILD HIER ABLEGEN', ph_sub: 'ziehen & ablegen · einfügen · oder klicken zum Auswählen',
+      ph_desc: 'GRIDMAP liest das Raster und zeigt die Größe NN×MM',
+      hint_toggle: '// Klick: erkanntes Raster ein/aus', hint_zoom: '// Strg+Klick zoomt hinein, Strg+Rechtsklick heraus',
+      t_zoomreset: 'Zoom auf 100% zurücksetzen', h_export: '// EXPORT',
+      export_hint: 'Karte als PNG speichern, benannt nach der Größe NN×MM.',
+      l_edges: '// RÄNDER:', b_crop: 'KÜRZEN', b_expand: 'ERWEIT.', l_fill: '// FÜLLUNG:',
+      t_fillvibrant: 'lebhafte Füllung — nächste Kante in den Rand fortsetzen',
+      t_fillswatch: 'einfarbige Füllung — klicken zum Wählen (Pipette)',
+      l_result: '// GRÖSSE:', b_save: '⬇ PNG SPEICHERN', saved: '✓ GESPEICHERT',
+      tag: 'RASTER-ANALYSE', tag_alt: 'TOTE ZELLEN' },
+    es: { b_import: '⬆ IMPORTAR', h_image: '// IMAGEN', h_detect: '// DETECCIÓN DE CUADRÍCULA:',
+      b_auto: 'AUTO', b_select: 'ÁREA', b_random: 'AZAR 3', b_cells: '4 CELDAS',
+      t_auto: 'Ejecuta la detección automática de 5 puntos.',
+      t_select: 'Elige las áreas para la detección — mantén Ctrl para varias.',
+      t_random: 'Toma 3 áreas aleatorias — pulsa de nuevo para repetir.',
+      t_cells: 'Dibuja un recuadro sobre un bloque de 2×2 celdas; la cuadrícula se detecta con ese tamaño (cuanto más preciso, mejor).',
+      ph_title: 'SUELTA UN MAPA AQUÍ', ph_sub: 'arrastra y suelta · pega · o haz clic para buscar',
+      ph_desc: 'GRIDMAP lee la cuadrícula e indica su tamaño NN×MM',
+      hint_toggle: '// Clic para mostrar/ocultar la cuadrícula', hint_zoom: '// Ctrl+clic para acercar, Ctrl+clic derecho para alejar',
+      t_zoomreset: 'restablecer zoom al 100%', h_export: '// EXPORTAR',
+      export_hint: 'Guarda el mapa como PNG, con nombre según su tamaño NN×MM.',
+      l_edges: '// BORDES:', b_crop: 'CORTAR', b_expand: 'AMPLIAR', l_fill: '// RELLENO:',
+      t_fillvibrant: 'relleno vívido — extiende el borde más cercano al margen',
+      t_fillswatch: 'color de relleno sólido — clic para elegir (cuentagotas)',
+      l_result: '// TAMAÑO:', b_save: '⬇ GUARDAR PNG', saved: '✓ GUARDADO',
+      tag: 'ANALIZADOR DE CUADRÍCULA', tag_alt: 'CELDAS MUERTAS' },
+    it: { b_import: '⬆ IMPORTA', h_image: '// IMMAGINE', h_detect: '// RILEVAMENTO GRIGLIA:',
+      b_auto: 'AUTO', b_select: 'AREA', b_random: 'CASUALE 3', b_cells: '4 CELLE',
+      t_auto: 'Esegue il rilevamento automatico a 5 punti.',
+      t_select: 'Scegli le aree per il rilevamento — tieni premuto Ctrl per più aree.',
+      t_random: 'Campiona 3 aree casuali — clicca di nuovo per rigenerare.',
+      t_cells: 'Traccia un riquadro attorno a un blocco di 2×2 celle; la griglia viene rilevata con quella dimensione (più è preciso, meglio è).',
+      ph_title: 'TRASCINA QUI UNA MAPPA', ph_sub: 'trascina · incolla · o clicca per sfogliare',
+      ph_desc: 'GRIDMAP legge la griglia e ne riporta la dimensione NN×MM',
+      hint_toggle: '// Clic per mostrare/nascondere la griglia', hint_zoom: '// Ctrl+clic per ingrandire, Ctrl+clic destro per ridurre',
+      t_zoomreset: 'reimposta zoom al 100%', h_export: '// ESPORTA',
+      export_hint: 'Salva la mappa come PNG, con nome in base alla dimensione NN×MM.',
+      l_edges: '// BORDI:', b_crop: 'TAGLIA', b_expand: 'ESPANDI', l_fill: '// RIEMPIMENTO:',
+      t_fillvibrant: 'riempimento vivace — estende il bordo più vicino nel margine',
+      t_fillswatch: 'colore di riempimento pieno — clicca per scegliere (contagocce)',
+      l_result: '// DIMENSIONE:', b_save: '⬇ SALVA PNG', saved: '✓ SALVATO',
+      tag: 'ANALIZZATORE DI GRIGLIA', tag_alt: 'CELLE MORTE' },
+    ja: { b_import: '⬆ 画像を読み込む', h_image: '// 画像', h_detect: '// グリッド検出:',
+      b_auto: '自動', b_select: '範囲選択', b_random: 'ランダム3', b_cells: '4セル',
+      t_auto: '自動5点検出を実行します。',
+      t_select: 'グリッド検出する範囲を選択 — Ctrlを押しながら複数選択。',
+      t_random: 'ランダムな3つの範囲を使用 — 再クリックで引き直し。',
+      t_cells: '2×2のセルブロックを枠で囲むと、そのセルサイズでグリッドを検出します（正確なほど良い）。',
+      ph_title: 'ここに地図画像をドロップ', ph_sub: 'ドラッグ＆ドロップ・貼り付け・またはクリックで選択',
+      ph_desc: 'GRIDMAP がグリッドを読み取り、NN×MM のサイズを表示します',
+      hint_toggle: '// クリックでグリッド表示を切替', hint_zoom: '// Ctrl+クリックで拡大、Ctrl+右クリックで縮小',
+      t_zoomreset: 'ズームを100%に戻す', h_export: '// 書き出し',
+      export_hint: '地図を PNG で保存します（ファイル名は NN×MM サイズ）。',
+      l_edges: '// 端の処理:', b_crop: '切り取り', b_expand: '拡張', l_fill: '// 塗りつぶし:',
+      t_fillvibrant: '鮮やかな塗り — 最も近い端を余白へ延長',
+      t_fillswatch: '単色の塗り — クリックで選択（スポイト）',
+      l_result: '// 結果サイズ:', b_save: '⬇ PNGを保存', saved: '✓ 保存しました',
+      tag: 'グリッド解析', tag_alt: '死んだセル' },
+    zh: { b_import: '⬆ 导入图像', h_image: '// 图像', h_detect: '// 网格检测：',
+      b_auto: '自动', b_select: '选择区域', b_random: '随机3', b_cells: '4格',
+      t_auto: '运行自动五点检测。',
+      t_select: '选择用于检测网格的区域 — 按住 Ctrl 可多选。',
+      t_random: '随机取 3 个区域检测 — 再次点击重新随机。',
+      t_cells: '框选任意 2×2 的格子块；网格将按该格子尺寸检测（越精确越好）。',
+      ph_title: '将地图图像拖到此处', ph_sub: '拖放 · 粘贴 · 或点击浏览',
+      ph_desc: 'GRIDMAP 读取网格并报告其 NN×MM 尺寸',
+      hint_toggle: '// 点击切换网格显示', hint_zoom: '// Ctrl+点击放大，Ctrl+右键点击缩小',
+      t_zoomreset: '将缩放重置为 100%', h_export: '// 导出',
+      export_hint: '将地图保存为 PNG，文件名包含其 NN×MM 尺寸。',
+      l_edges: '// 边缘模式：', b_crop: '裁剪', b_expand: '扩展', l_fill: '// 填充：',
+      t_fillvibrant: '鲜明填充 — 将最近的边缘延伸到留白处',
+      t_fillswatch: '纯色填充 — 点击拾取（吸管）',
+      l_result: '// 结果尺寸：', b_save: '⬇ 保存 PNG', saved: '✓ 已保存',
+      tag: '网格地图分析器', tag_alt: '死亡格子' },
+  };
+  let curLang = 'en';
+  const t = (key) => ((I18N[curLang] || I18N.en)[key]) || I18N.en[key] || '';
+  function applyLang(code) {
+    if (!I18N[code]) code = 'en';
+    curLang = code;
+    document.documentElement.lang = code;
+    document.querySelectorAll('[data-i18n]').forEach((el) => { const v = t(el.getAttribute('data-i18n')); if (v) el.textContent = v; });
+    document.querySelectorAll('[data-i18n-title]').forEach((el) => { const v = t(el.getAttribute('data-i18n-title')); if (v) el.title = v; });
+    const sel = $('uiLangSel'); if (sel) sel.value = code;
+    try { localStorage.setItem('gridmap:lang', code); } catch (e) {}
+  }
+  (function initLang() {
+    let lang = 'en';
+    try { lang = localStorage.getItem('gridmap:lang') || (navigator.language || 'en').slice(0, 2).toLowerCase(); } catch (e) {}
+    const sel = $('uiLangSel');
+    if (sel) sel.addEventListener('change', () => applyLang(sel.value));
+    applyLang(lang);
+  })();
 
   // ---- Logo tool-switcher dropdown (ported from chronos/commlink) ----
   (function setupAppMenu() {
@@ -409,15 +560,13 @@
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
   })();
 
-  // ---- Header tag glitch: scrambles GRID MAP ANALYZER <-> COUNT THE CELLS ----
+  // ---- Header tag glitch: scrambles the tagline <-> its alt phrase. Both read
+  // from the current language each cycle (t('tag') / t('tag_alt')). ----
   (function startTagGlitch() {
     const el = $('tagWord');
     if (!el) return;
-    const ORIGINAL = 'GRID MAP ANALYZER';
-    const TARGET = 'COUNT THE CELLS';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const maxLen = Math.max(ORIGINAL.length, TARGET.length);
-    function scrambleFrame(target, revealed) {
+    function scrambleFrame(target, revealed, maxLen) {
       let out = '';
       for (let i = 0; i < maxLen; i++) {
         if (i >= target.length) { out += ' '; continue; }
@@ -425,23 +574,25 @@
       }
       return out;
     }
-    function runScramble(target, onDone) {
+    function runScramble(target, maxLen, onDone) {
       const steps = 8; let step = 0;
       const id = setInterval(() => {
         step++;
-        el.textContent = scrambleFrame(target, Math.floor((step / steps) * target.length));
+        el.textContent = scrambleFrame(target, Math.floor((step / steps) * target.length), maxLen);
         if (step >= steps) {
           clearInterval(id);
-          el.textContent = target + ' '.repeat(maxLen - target.length);
+          el.textContent = target + ' '.repeat(Math.max(0, maxLen - target.length));
           onDone();
         }
       }, 40);
     }
     function runGlitch() {
+      const ORIGINAL = t('tag'), TARGET = t('tag_alt');
+      const maxLen = Math.max(ORIGINAL.length, TARGET.length);
       el.classList.add('glitching');
-      runScramble(TARGET, () => {
+      runScramble(TARGET, maxLen, () => {
         setTimeout(() => {
-          runScramble(ORIGINAL, () => {
+          runScramble(ORIGINAL, maxLen, () => {
             el.classList.remove('glitching');
             el.textContent = ORIGINAL;
             setTimeout(runGlitch, 14000 + Math.random() * 18000);
@@ -460,7 +611,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v1.0.0';
+    const VER = ' // v1.1.0';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 
@@ -1317,7 +1468,7 @@
         a.click();
         setTimeout(() => URL.revokeObjectURL(a.href), 2000);
         const prev = exportBtn.textContent;
-        exportBtn.textContent = '✓ SAVED';
+        exportBtn.textContent = t('saved');
         setTimeout(() => { exportBtn.textContent = prev; }, 1400);
       }, 'image/png');
     });

@@ -1,4 +1,4 @@
-<!-- GRIDMAP v0.4.2 -->
+<!-- GRIDMAP v0.4.3 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -285,7 +285,10 @@
   .dropzone.dragover { border-color: var(--accent); background: rgba(var(--accent-rgb),0.06); }
   .dropzone .placeholder { padding: 24px; font-size: 14px; letter-spacing: 1px; line-height: 1.8; }
   .dropzone .placeholder b { color: var(--main); }
-  .dropzone .canvas-wrap { position: relative; display: none; line-height: 0; }
+  /* Out of flow + centred so the canvas can't stretch the dropzone: the zone
+     stays a fixed viewport (flex:1 / min-height) that clips an over-zoomed map,
+     keeping the zoom fit-calculation measured against a stable size. */
+  .dropzone .canvas-wrap { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; line-height: 0; }
   .dropzone .canvas-wrap canvas { display: block; }   /* display size is driven by the zoom control */
   /* zoom control below the map view */
   .zoom-bar { align-self: center; display: flex; align-items: center; gap: 10px; }
@@ -333,7 +336,7 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.4.2</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.4.3</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
@@ -515,7 +518,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v0.4.2';
+    const VER = ' // v0.4.3';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 
@@ -872,7 +875,8 @@
     let manual = false, winC0 = 0, winR0 = 0, winC1 = 0, winR1 = 0;   // MANUAL window, in grid-cell indices
     let gCols = 0, gRows = 0;   // current grid cell counts (NN×MM); ×2 //2 ×3 //3 rescale these
     let offX = 0, offY = 0;     // grid-origin nudge from the top-left (image px, sub-cell)
-    let zoom = 100;             // map-view scale, 10..300 (% of the fit-to-view size)
+    let zoom = 100;             // map-view scale, 10..300 (% of the source image fitting the view)
+    let dispScale = 1;          // current canvas buffer's image-px→buffer-px downscale (set by renderDisplay)
     let selecting = false, regions = [], dragStart = null, dragRect = null, blockZoneClick = false;  // region-pick mode
     try {
       fixEdges = localStorage.getItem('gridmap:fixEdges') === '1';
@@ -1331,6 +1335,7 @@
         const ux0 = Math.min(0, wx), uy0 = Math.min(0, wy);
         const uW = Math.max(nW, wx + ww) - ux0, uH = Math.max(nH, wy + wh) - uy0;
         const scale = Math.min(1, DISPLAY_MAX / Math.max(uW, uH));
+        dispScale = scale;
         const dW = Math.max(1, Math.round(uW * scale)), dH = Math.max(1, Math.round(uH * scale));
         mapC.width = dW; mapC.height = dH;
         const ctx = mapC.getContext('2d');
@@ -1354,6 +1359,7 @@
       }
       if (fixEdges && edgeMode === 'crop' && L.src) {
         const scale = Math.min(1, DISPLAY_MAX / Math.max(nW, nH));
+        dispScale = scale;
         const dW = Math.max(1, Math.round(nW * scale)), dH = Math.max(1, Math.round(nH * scale));
         mapC.width = dW; mapC.height = dH;
         const ctx = mapC.getContext('2d');
@@ -1373,6 +1379,7 @@
         return;
       }
       const scale = Math.min(1, DISPLAY_MAX / Math.max(L.outW, L.outH));
+      dispScale = scale;
       const { w: dW, h: dH } = paint(mapC, L, scale);
       drawGrid(L.vFrac, L.vOff, L.hFrac, L.hOff, dW, dH);
       setReadout(L.cols, L.rows);
@@ -1404,14 +1411,21 @@
     });
 
     // ---- Map-view zoom (display only — never affects detection or the export) ----
-    // The on-screen map fills the view at 100% and scales 10..300% from there;
+    // The SOURCE IMAGE fits the view at 100% and scales 10..300% from there;
     // click steps by 10%, press-and-hold sweeps the range; ↺ resets to 100%.
+    // The scale is anchored to the (fixed) natural image size, NOT the canvas
+    // buffer — so changing fill / running AUTO / recentring the window (which
+    // resize the buffer) keeps a given zoom % visually constant. Padding or a
+    // window that runs off the image extends past the view and is clipped.
     const zoomIn = $('zoomIn'), zoomOut = $('zoomOut'), zoomVal = $('zoomVal'), zoomReset = $('zoomReset');
     function applyZoom() {
       if (zoomVal) zoomVal.textContent = zoom + '%';
       if (!loaded || !mapC.width || !zone.clientWidth) return;
-      const fit = Math.min((zone.clientWidth - 8) / mapC.width, (zone.clientHeight - 8) / mapC.height) || 1;
-      const s = Math.max(0.02, fit * zoom / 100);
+      const nW = loaded.image.naturalWidth, nH = loaded.image.naturalHeight;
+      const fit = Math.min((zone.clientWidth - 8) / nW, (zone.clientHeight - 8) / nH) || 1;
+      // fit is px-per-image-px; the buffer holds image px at dispScale, so divide
+      // it back out to turn the buffer's pixel dimensions into on-screen size.
+      const s = Math.max(0.02, (fit / dispScale) * zoom / 100);
       mapC.style.width = Math.round(mapC.width * s) + 'px';
       mapC.style.height = Math.round(mapC.height * s) + 'px';
     }
@@ -1459,6 +1473,7 @@
     function renderSelectView() {        // plain full image, so screen↔image mapping stays clean
       const image = loaded.image, nW = image.naturalWidth, nH = image.naturalHeight;
       const scale = Math.min(1, DISPLAY_MAX / Math.max(nW, nH));
+      dispScale = scale;
       const dW = Math.max(1, Math.round(nW * scale)), dH = Math.max(1, Math.round(nH * scale));
       mapC.width = dW; mapC.height = dH;
       mapC.getContext('2d').drawImage(image, 0, 0, dW, dH);

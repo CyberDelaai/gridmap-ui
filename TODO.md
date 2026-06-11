@@ -10,3 +10,6 @@ Items are removed from the list once they are implemented / resolved (no archive
 ## SMALL (Z version bump)
 
 1. Update preview png
+2. Make draggable snap-to-grid trimmer lines at all edges of preview
+3. Remove existing canvas controls
+4. Make draggable navidation on zoomed map, + LMB to zoom in, RMB to zoom out while not in selection mode

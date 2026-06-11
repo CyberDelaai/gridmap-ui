@@ -1,4 +1,4 @@
-<!-- GRIDMAP v0.4.3 -->
+<!-- GRIDMAP v0.4.4 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -178,6 +178,7 @@
   .btn:hover { background: color-mix(in srgb, var(--btn-color) 22%, transparent); box-shadow: 0 0 12px color-mix(in srgb, var(--btn-color) 45%, transparent); }
   .btn:disabled { opacity: .4; cursor: not-allowed; background: transparent; box-shadow: none; }
   .config .export-btn { width: 100%; margin-top: 16px; }
+  .config .import-btn { --btn-color: var(--main); width: 100%; margin-top: 4px; margin-bottom: 12px;}
   /* Sliding two-state toggle — ported from chronos/commlink .side-switch */
   .fx-toggle { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; }
   .fx-label { font-size: 12px; letter-spacing: 1.5px; color: var(--main); text-transform: uppercase; }
@@ -290,6 +291,12 @@
      keeping the zoom fit-calculation measured against a stable size. */
   .dropzone .canvas-wrap { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; line-height: 0; }
   .dropzone .canvas-wrap canvas { display: block; }   /* display size is driven by the zoom control */
+  /* footer below the map: left-aligned hint + centred zoom control. 1fr|auto|1fr
+     keeps the zoom bar centred and guarantees no overlap; the hint wraps only
+     when a narrow window leaves its column too tight. */
+  .canvas-footer { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; }
+  .canvas-hint { justify-self: start; color: var(--dim); font-size: 12px; letter-spacing: .5px; line-height: 1.4; opacity: 0; transition: opacity .15s; }
+  .dropzone.has-image ~ .canvas-footer .canvas-hint { opacity: 1; }
   /* zoom control below the map view */
   .zoom-bar { align-self: center; display: flex; align-items: center; gap: 10px; }
   .zoom-btn {
@@ -303,15 +310,20 @@
   .zoom-val { min-width: 4.5ch; text-align: center; color: var(--accent); font-weight: 700; font-size: 13px; letter-spacing: 1px; }
   .zoom-btn.reset { color: var(--accent); border-color: rgba(var(--accent-rgb),0.4); }
   .zoom-btn.reset:hover { background: rgba(var(--accent-rgb),0.16); border-color: var(--accent); }
-  /* the grid overlay sits exactly over the map and only reveals on hover */
+  /* the grid overlay sits exactly over the map. A left-click on the canvas
+     toggles its persistent state (.grid-on, off by default); hovering the
+     canvas previews the REVERSED state (off→show, on→hide). It is forced on
+     while picking a region. */
   #gridCanvas {
     position: absolute; inset: 0; width: 100%; height: 100%;
     pointer-events: none; opacity: 0; transition: opacity .15s;
   }
-  .dropzone .canvas-wrap:hover #gridCanvas { opacity: 1; }
+  .dropzone.grid-on #gridCanvas { opacity: 1; }
+  .dropzone:not(.grid-on):not(.selecting) .canvas-wrap:hover #gridCanvas { opacity: 1; }
+  .dropzone.grid-on:not(.selecting) .canvas-wrap:hover #gridCanvas { opacity: 0; }
   .dropzone.has-image { border-style: solid; border-color: rgba(var(--main-rgb),0.5); background: #000; }
   .dropzone.has-image .placeholder { display: none; }
-  .dropzone.has-image .canvas-wrap { display: inline-block; }
+  .dropzone.has-image .canvas-wrap { display: inline-block; cursor: pointer; }
   /* region-select mode: crosshair + always-visible selection overlay */
   .dropzone.selecting, .dropzone.selecting .canvas-wrap, .dropzone.selecting canvas { cursor: crosshair; }
   .dropzone.selecting #gridCanvas { opacity: 1; }
@@ -336,17 +348,18 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.4.3</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.4.4</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
   <div class="layout">
     <!-- LEFT config — grid mode + manual cell-count controls -->
     <aside class="config config-left" data-augmented-ui="tl-clip br-clip border">
-      <h2>// GRID</h2>
+      <h2>// IMAGE</h2>
+      <button class="btn import-btn" id="importBtn" type="button" data-augmented-ui="tl-clip br-clip both">⬆ IMPORT IMAGE</button>            
+      <h2>// GRID DETECTION:</h2>
       <div class="topbar">
-        <div class="detect-group">
-          <span class="fx-label">// DETECTION:</span>
+        <div class="detect-group">          
           <div class="detect-btns">
             <button class="btn detect-btn" id="autoBtn" type="button" data-augmented-ui="tl-clip br-clip both">AUTO</button>
             <button class="btn detect-btn" id="selectBtn" type="button" data-augmented-ui="tl-clip br-clip both">SELECT</button>
@@ -411,11 +424,14 @@
         </div>
         <input type="file" id="fileInput" accept="image/*" hidden />
       </div>
-      <div class="zoom-bar">
-        <button class="zoom-btn" id="zoomOut" type="button" aria-label="zoom out">−</button>
-        <span class="zoom-val" id="zoomVal">100%</span>
-        <button class="zoom-btn" id="zoomIn" type="button" aria-label="zoom in">+</button>
-        <button class="zoom-btn reset" id="zoomReset" type="button" aria-label="reset zoom to 100%" title="reset zoom to 100%">↺</button>
+      <div class="canvas-footer">
+        <span class="canvas-hint">// Click to toggle detected grid</span>
+        <div class="zoom-bar">
+          <button class="zoom-btn" id="zoomOut" type="button" aria-label="zoom out">−</button>
+          <span class="zoom-val" id="zoomVal">100%</span>
+          <button class="zoom-btn" id="zoomIn" type="button" aria-label="zoom in">+</button>
+          <button class="zoom-btn reset" id="zoomReset" type="button" aria-label="reset zoom to 100%" title="reset zoom to 100%">↺</button>
+        </div>
       </div>
     </main>
 
@@ -518,7 +534,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v0.4.3';
+    const VER = ' // v0.4.4';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 
@@ -835,6 +851,7 @@
       }
       syncAutoMode();
       zone.classList.add('has-image');
+      zone.classList.remove('grid-on');  // grid hidden by default; canvas click toggles it (hover previews)
       if (exportBtn) exportBtn.disabled = false;
       renderDisplay();
       requestAnimationFrame(applyZoom);   // re-apply persisted zoom once layout has settled
@@ -852,7 +869,13 @@
       image.src = url;
     }
 
-    zone.addEventListener('click', () => { if (selecting || blockZoneClick) return; input.click(); });
+    const importBtn = $('importBtn');
+    if (importBtn) importBtn.addEventListener('click', () => input.click());
+    zone.addEventListener('click', () => {
+      if (selecting || blockZoneClick) return;
+      if (!loaded) { input.click(); return; }   // empty zone → browse for an image
+      zone.classList.toggle('grid-on');          // loaded → left-click toggles the detected grid
+    });
     input.addEventListener('change', (e) => load(e.target.files[0]));
     zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
     zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));

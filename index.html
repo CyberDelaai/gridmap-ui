@@ -1,4 +1,4 @@
-<!-- GRIDMAP v0.4.10 -->
+<!-- GRIDMAP v0.5.0 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -236,44 +236,6 @@
   }
   .config .calc-size .calc-val { margin-left: 6px; color: var(--accent); }
   .config .calc-size.estimated .calc-val { color: var(--main); }
-  /* // CANVAS d-pad: 3×3 grid — 8 arrows nudge the canvas window over the
-     image, the centre square recenters it */
-  .config .canvas-h2 { margin-top: 24px; }
-  .dpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; width: 150px; }
-  .dpad button {
-    aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center;
-    background: var(--panel); color: var(--main); cursor: pointer;
-    border: 1px solid rgba(var(--main-rgb),0.35);
-    font-family: 'JetBrains Mono', monospace; font-size: 20px; line-height: 1;
-    transition: background .12s, color .12s, border-color .12s;
-  }
-  .dpad button:hover { background: rgba(var(--main-rgb),0.16); color: var(--accent); border-color: var(--main); }
-  .dpad .dpad-center { color: var(--accent); border-color: rgba(var(--accent-rgb),0.45); }
-  .dpad .dpad-center:hover { background: rgba(var(--accent-rgb),0.16); border-color: var(--accent); }
-  /* d-pad + the ×2 //2 ×3 //3 factor pad side by side */
-  .canvas-controls { display: flex; align-items: center; gap: 10px; }
-  .factor-pad { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
-  .factor-pad .factor-btn {
-    width: 46px; height: 46px; display: flex; align-items: center; justify-content: center;
-    background: var(--panel); color: var(--main); cursor: pointer;
-    border: 1px solid rgba(var(--main-rgb),0.35);
-    font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; line-height: 1;
-    transition: background .12s, color .12s, border-color .12s;
-  }
-  .factor-pad .factor-btn:hover:not(:disabled) { background: rgba(var(--main-rgb),0.16); color: var(--accent); border-color: var(--main); }
-  .factor-pad .factor-btn:disabled { opacity: .3; cursor: not-allowed; }
-  /* // OFFSET steppers: nudge the grid origin in X / Y */
-  .offset-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
-  .stepper { display: inline-flex; align-items: center; gap: 6px; }
-  .stepper .ostep {
-    width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;
-    background: var(--panel); color: var(--main); cursor: pointer;
-    border: 1px solid rgba(var(--main-rgb),0.35);
-    font-family: 'JetBrains Mono', monospace; font-size: 16px; line-height: 1;
-    transition: background .12s, color .12s, border-color .12s;
-  }
-  .stepper .ostep:hover { background: rgba(var(--main-rgb),0.16); color: var(--accent); border-color: var(--main); }
-  .stepper .onum { min-width: 4ch; text-align: center; font-size: 13px; font-weight: 700; color: var(--accent); }
   /* central drop zone / map canvas */
   .dropzone {
     flex: 1; min-height: 440px; position: relative;
@@ -352,7 +314,7 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.4.10</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.5.0</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
@@ -374,46 +336,6 @@
           </div>
         </div>
       </div>
-      <h2 class="canvas-h2">// CANVAS</h2>
-      <div class="canvas-controls">
-        <div class="dpad" role="group" aria-label="move canvas window over the image">
-          <button id="panNW" type="button" aria-label="up-left">\</button>
-          <button id="panN" type="button" aria-label="up">^</button>
-          <button id="panNE" type="button" aria-label="up-right">/</button>
-          <button id="panW" type="button" aria-label="left">&lt;</button>
-          <button class="dpad-center" id="panReset" type="button" aria-label="recenter window">□</button>
-          <button id="panE" type="button" aria-label="right">&gt;</button>
-          <button id="panSW" type="button" aria-label="down-left">/</button>
-          <button id="panS" type="button" aria-label="down">v</button>
-          <button id="panSE" type="button" aria-label="down-right">\</button>
-        </div>
-        <div class="factor-pad" role="group" aria-label="multiply or divide the cell count">
-          <button class="factor-btn" id="facDiv2" type="button" aria-label="halve the cell count">/2</button>
-          <button class="factor-btn" id="facMul2" type="button" aria-label="double the cell count">&times;2</button>
-          <button class="factor-btn" id="facDiv3" type="button" aria-label="third the cell count">/3</button>
-          <button class="factor-btn" id="facMul3" type="button" aria-label="triple the cell count">&times;3</button>
-        </div>
-      </div>
-      <p class="hint">Click slides the window a cell. Ctrl+click grows the canvas a cell on that side (Ctrl+Shift shrinks it); Shift reverses a move. □ resets the window; Ctrl+□ fits the whole image. The window can run off the image — outside is trimmed, gaps take the fill. ×2 //2 ×3 //3 re-subdivide the grid (÷ only when it splits evenly).</p>
-
-      <h2 class="canvas-h2">// OFFSET</h2>
-      <div class="offset-row">
-        <span class="fx-label">// X →:</span>
-        <span class="stepper">
-          <button class="ostep" id="offXDec" type="button" aria-label="grid offset left">−</button>
-          <span class="onum" id="offXVal">0</span>
-          <button class="ostep" id="offXInc" type="button" aria-label="grid offset right">+</button>
-        </span>
-      </div>
-      <div class="offset-row">
-        <span class="fx-label">// Y ↓:</span>
-        <span class="stepper">
-          <button class="ostep" id="offYDec" type="button" aria-label="grid offset up">−</button>
-          <span class="onum" id="offYVal">0</span>
-          <button class="ostep" id="offYInc" type="button" aria-label="grid offset down">+</button>
-        </span>
-      </div>
-      <p class="hint">Nudge the grid origin from the top-left corner (X right, Y down), in pixels.</p>
     </aside>
 
     <!-- CENTER working area -->
@@ -544,7 +466,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v0.4.10';
+    const VER = ' // v0.5.0';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 
@@ -920,7 +842,7 @@
       fillRow = $('fillRow'), fillSwatch = $('fillSwatch'), fillVibrant = $('fillVibrant'),
       fillColor = $('fillColor');
     const autoBtn = $('autoBtn'), selectBtn = $('selectBtn'), randomBtn = $('randomBtn'), cellBtn = $('cellBtn'),
-      colVal = $('colVal'), rowVal = $('rowVal'), calcSize = $('calcSize'), calcVal = $('calcVal'), panReset = $('panReset');
+      colVal = $('colVal'), rowVal = $('rowVal'), calcSize = $('calcSize'), calcVal = $('calcVal');
     let fixEdges = false, edgeMode = 'crop', fillOverride = '', fillMode = 'vibrant';
     let manual = false, winC0 = 0, winR0 = 0, winC1 = 0, winR1 = 0;   // MANUAL window, in grid-cell indices
     let gCols = 0, gRows = 0;   // current grid cell counts (NN×MM); ×2 //2 ×3 //3 rescale these
@@ -1068,8 +990,6 @@
     // side (CTRL+SHIFT shrinks it); SHIFT reverses a plain move. The window is
     // held as grid-cell bounds [winC0,winC1) × [winR0,winR1) and may run off the
     // image. Icons reflect the held modifiers live.
-    const PAN_DIRS = { panNW: [-1, -1], panN: [0, -1], panNE: [1, -1], panW: [-1, 0],
-                       panE: [1, 0], panSW: [-1, 1], panS: [0, 1], panSE: [1, 1] };
     function cellGeom() {
       const nW = loaded.image.naturalWidth, nH = loaded.image.naturalHeight, v = view();
       return { nW, nH, cellW: v.vFrac * nW, cellH: v.hFrac * nH,
@@ -1080,15 +1000,6 @@
       winC0 = 0; winR0 = 0;
       winC1 = Math.max(1, Math.floor((nW - baseX) / cellW + 1e-6));
       winR1 = Math.max(1, Math.floor((nH - baseY) / cellH + 1e-6));
-    }
-    function fitWindow() {                         // cover the WHOLE image (partial edges rounded up)
-      const { nW, nH, cellW, cellH, baseX, baseY } = cellGeom();
-      winC0 = Math.floor((0 - baseX) / cellW + 1e-6);
-      winR0 = Math.floor((0 - baseY) / cellH + 1e-6);
-      winC1 = Math.ceil((nW - baseX) / cellW - 1e-6);
-      winR1 = Math.ceil((nH - baseY) / cellH - 1e-6);
-      if (winC1 <= winC0) winC1 = winC0 + 1;
-      if (winR1 <= winR0) winR1 = winR0 + 1;
     }
     function setManual() { if (loaded && !manual) { manual = true; initWindow(); } }
     // persist / restore the per-image MANUAL state (mode, factor, offset, window)
@@ -1109,38 +1020,6 @@
         winC0 = gi('gridmap:winC0', 0); winR0 = gi('gridmap:winR0', 0);
         winC1 = gi('gridmap:winC1', gCols); winR1 = gi('gridmap:winR1', gRows);
       } catch (e) { manual = false; gCols = loaded.cols; gRows = loaded.rows; offX = 0; offY = 0; }
-    }
-    function moveWindow(dx, dy) { winC0 += dx; winC1 += dx; winR0 += dy; winR1 += dy; }
-    function growWindow(dx, dy, g) {              // g=+1 expand / -1 contract, on the side(s) dir points to
-      if (dx > 0) { if (g > 0) winC1++; else if (winC1 - winC0 > 1) winC1--; }
-      if (dx < 0) { if (g > 0) winC0--; else if (winC1 - winC0 > 1) winC0++; }
-      if (dy > 0) { if (g > 0) winR1++; else if (winR1 - winR0 > 1) winR1--; }
-      if (dy < 0) { if (g > 0) winR0--; else if (winR1 - winR0 > 1) winR0++; }
-    }
-    function onPad(dx, dy, e) {
-      if (!loaded) return;
-      setManual();
-      const sign = e.shiftKey ? -1 : 1;                       // SHIFT reverses
-      if (e.ctrlKey || e.metaKey) growWindow(dx, dy, sign);   // CTRL: expand / (+SHIFT) contract
-      else moveWindow(dx * sign, dy * sign);                  // plain: move (SHIFT = opposite way)
-      syncAutoMode(); renderDisplay();
-    }
-    Object.keys(PAN_DIRS).forEach((id) => {
-      const el = $(id);
-      if (!el) return;
-      el.addEventListener('click', (e) => onPad(PAN_DIRS[id][0], PAN_DIRS[id][1], e));
-      el.addEventListener('contextmenu', (e) => e.preventDefault());   // ctrl/right-click safe
-    });
-    // centre square: click resets the window to the detected whole-cell extent;
-    // CTRL+click fits the WHOLE image (max space — partial edges rounded up).
-    if (panReset) {
-      panReset.addEventListener('click', (e) => {
-        if (!loaded) return;
-        setManual();
-        if (e.ctrlKey || e.metaKey) fitWindow(); else initWindow();
-        syncAutoMode(); renderDisplay();
-      });
-      panReset.addEventListener('contextmenu', (e) => e.preventDefault());
     }
     // AUTO button: run the default 5-point detection and return to the auto grid.
     function runAuto() {
@@ -1179,82 +1058,11 @@
     }
     if (randomBtn) randomBtn.addEventListener('click', runRandom);
 
-    // Live d-pad icons: < > ^ v (and \ /), doubled while CTRL is held (expand),
-    // flipped while SHIFT is held (reverse).
-    function dirGlyph(dx, dy, ctrl, shift) {
-      let x = dx, y = dy;
-      if (shift) { x = -x; y = -y; }
-      const g = (x && y) ? (x === y ? '\\' : '/') : (x < 0 ? '<' : x > 0 ? '>' : y < 0 ? '^' : 'v');
-      return ctrl ? g + g : g;
-    }
-    function updatePadIcons(ctrl, shift) {
-      Object.keys(PAN_DIRS).forEach((id) => {
-        const el = $(id); if (!el) return;
-        el.textContent = dirGlyph(PAN_DIRS[id][0], PAN_DIRS[id][1], ctrl, shift);
-      });
-    }
-    const padMods = (e) => updatePadIcons(e.ctrlKey || e.metaKey, e.shiftKey);
-    document.addEventListener('keydown', padMods);
-    document.addEventListener('keyup', padMods);
-    window.addEventListener('blur', () => updatePadIcons(false, false));
-    updatePadIcons(false, false);
-
-    // ---- // CANVAS factor pad: ×2 //2 ×3 //3 — re-subdivide the grid (NN×MM).
-    // Multiply always; divide only when BOTH axes split evenly (count % f === 0).
-    const facMul2 = $('facMul2'), facDiv2 = $('facDiv2'), facMul3 = $('facMul3'), facDiv3 = $('facDiv3');
-    const MAX_SUB_CELLS = 600;   // sanity cap so ×N can't explode the line count
-    function applyFactor(f) {
-      if (!loaded) return;
-      if (f < 1) {                                  // divide: both axes must split evenly
-        const d = Math.round(1 / f);
-        if (gCols % d !== 0 || gRows % d !== 0) return;
-      } else if (gCols * f > MAX_SUB_CELLS || gRows * f > MAX_SUB_CELLS) {
-        return;
-      }
-      setManual();                                  // a factor press takes manual control too
-      gCols = Math.round(gCols * f); gRows = Math.round(gRows * f);
-      // keep the window roughly in place: it now spans f× the cells
-      winC0 = Math.round(winC0 * f); winC1 = Math.round(winC1 * f);
-      winR0 = Math.round(winR0 * f); winR1 = Math.round(winR1 * f);
-      if (winC1 <= winC0) winC1 = winC0 + 1;
-      if (winR1 <= winR0) winR1 = winR0 + 1;
-      syncAutoMode(); renderDisplay();
-    }
-    function syncFactorButtons() {
-      const ok = !!loaded;
-      if (facDiv2) facDiv2.disabled = !ok || gCols % 2 !== 0 || gRows % 2 !== 0;
-      if (facDiv3) facDiv3.disabled = !ok || gCols % 3 !== 0 || gRows % 3 !== 0;
-      if (facMul2) facMul2.disabled = !ok || gCols * 2 > MAX_SUB_CELLS || gRows * 2 > MAX_SUB_CELLS;
-      if (facMul3) facMul3.disabled = !ok || gCols * 3 > MAX_SUB_CELLS || gRows * 3 > MAX_SUB_CELLS;
-    }
-    if (facMul2) facMul2.addEventListener('click', () => applyFactor(2));
-    if (facDiv2) facDiv2.addEventListener('click', () => applyFactor(1 / 2));
-    if (facMul3) facMul3.addEventListener('click', () => applyFactor(3));
-    if (facDiv3) facDiv3.addEventListener('click', () => applyFactor(1 / 3));
-
-    // ---- // OFFSET: nudge the grid origin in X / Y (sub-cell phase), measured
-    // from the top-left toward the bottom-right. Using it flips to MANUAL. ----
-    const offXDec = $('offXDec'), offXInc = $('offXInc'), offYDec = $('offYDec'), offYInc = $('offYInc'),
-      offXVal = $('offXVal'), offYVal = $('offYVal');
-    const OFF_STEP = 0.05;   // nudge per click, as a fraction of a cell
-    function nudgeOff(axis, dir) {
-      if (!loaded) return;
-      setManual();
-      const nW = loaded.image.naturalWidth, nH = loaded.image.naturalHeight, v = view();
-      if (axis === 'x') { const cell = v.vFrac * nW, s = Math.max(1, Math.round(cell * OFF_STEP)); offX = ((offX + dir * s) % cell + cell) % cell; }
-      else { const cell = v.hFrac * nH, s = Math.max(1, Math.round(cell * OFF_STEP)); offY = ((offY + dir * s) % cell + cell) % cell; }
-      syncAutoMode(); renderDisplay();
-    }
-    if (offXDec) offXDec.addEventListener('click', () => nudgeOff('x', -1));
-    if (offXInc) offXInc.addEventListener('click', () => nudgeOff('x', 1));
-    if (offYDec) offYDec.addEventListener('click', () => nudgeOff('y', -1));
-    if (offYInc) offYInc.addEventListener('click', () => nudgeOff('y', 1));
 
     syncToggles();
     refreshFill();
     syncFillMode();
     syncAutoMode();
-    syncFactorButtons();
 
     // ---- Result layout: how the edge-fix reshapes the map. Shared by the
     // on-canvas preview AND the PNG export so they always match. Returns
@@ -1445,9 +1253,6 @@
       // (reflects manual edits and crop/expand)
       if (calcVal) calcVal.textContent = cols + '×' + rows;
       if (calcSize) calcSize.classList.toggle('estimated', est);
-      if (offXVal) offXVal.textContent = Math.round(offX);
-      if (offYVal) offYVal.textContent = Math.round(offY);
-      syncFactorButtons();   // refresh ÷ availability for the new grid size
       applyZoom();           // re-fit the on-screen map to the current zoom
     }
 
@@ -1533,7 +1338,7 @@
         if (!blob) return;
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = 'gridmap_' + out.cols + 'x' + out.rows + '.png';
+        a.download = 'gridmap_' + Math.floor(Date.now() / 1000) + '_' + out.cols + 'x' + out.rows + '.png';
         a.click();
         setTimeout(() => URL.revokeObjectURL(a.href), 2000);
         const prev = exportBtn.textContent;

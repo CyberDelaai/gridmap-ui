@@ -1,4 +1,4 @@
-<!-- GRIDMAP v0.4.4 -->
+<!-- GRIDMAP v0.4.5 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -291,11 +291,9 @@
      keeping the zoom fit-calculation measured against a stable size. */
   .dropzone .canvas-wrap { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; line-height: 0; }
   .dropzone .canvas-wrap canvas { display: block; }   /* display size is driven by the zoom control */
-  /* footer below the map: left-aligned hint + centred zoom control. 1fr|auto|1fr
-     keeps the zoom bar centred and guarantees no overlap; the hint wraps only
-     when a narrow window leaves its column too tight. */
-  .canvas-footer { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; }
-  .canvas-hint { justify-self: start; color: var(--dim); font-size: 12px; letter-spacing: .5px; line-height: 1.4; opacity: 0; transition: opacity .15s; }
+  /* footer below the map: left-aligned hint lines + right-aligned zoom control */
+  .canvas-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .canvas-hint { display: flex; flex-direction: column; gap: 2px; color: var(--dim); font-size: 12px; letter-spacing: .5px; line-height: 1.4; opacity: 0; transition: opacity .15s; }
   .dropzone.has-image ~ .canvas-footer .canvas-hint { opacity: 1; }
   /* zoom control below the map view */
   .zoom-bar { align-self: center; display: flex; align-items: center; gap: 10px; }
@@ -348,7 +346,7 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.4.4</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.4.5</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
@@ -425,7 +423,10 @@
         <input type="file" id="fileInput" accept="image/*" hidden />
       </div>
       <div class="canvas-footer">
-        <span class="canvas-hint">// Click to toggle detected grid</span>
+        <span class="canvas-hint">
+          <span>// Click to toggle detected grid</span>
+          <span>// Ctrl+click to zoom in, Ctrl+right-click to zoom out</span>
+        </span>
         <div class="zoom-bar">
           <button class="zoom-btn" id="zoomOut" type="button" aria-label="zoom out">−</button>
           <span class="zoom-val" id="zoomVal">100%</span>
@@ -534,7 +535,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v0.4.4';
+    const VER = ' // v0.4.5';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 
@@ -871,10 +872,17 @@
 
     const importBtn = $('importBtn');
     if (importBtn) importBtn.addEventListener('click', () => input.click());
-    zone.addEventListener('click', () => {
+    const ZOOM_CLICK_STEP = 25;   // Ctrl+LMB / Ctrl+RMB zoom step (centred), in %
+    zone.addEventListener('click', (e) => {
       if (selecting || blockZoneClick) return;
-      if (!loaded) { input.click(); return; }   // empty zone → browse for an image
-      zone.classList.toggle('grid-on');          // loaded → left-click toggles the detected grid
+      if (!loaded) { input.click(); return; }                                   // empty zone → browse for an image
+      if (e.ctrlKey || e.metaKey) { setZoom(zoom + ZOOM_CLICK_STEP); return; }   // Ctrl+LMB → zoom in
+      zone.classList.toggle('grid-on');                                         // plain LMB → toggle the detected grid
+    });
+    zone.addEventListener('contextmenu', (e) => {
+      if (selecting || !loaded || !(e.ctrlKey || e.metaKey)) return;            // plain right-click → normal menu
+      e.preventDefault();                                                       // Ctrl+RMB → zoom out
+      setZoom(zoom - ZOOM_CLICK_STEP);
     });
     input.addEventListener('change', (e) => load(e.target.files[0]));
     zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });

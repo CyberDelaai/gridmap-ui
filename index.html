@@ -1,4 +1,4 @@
-<!-- GRIDMAP v0.4.5 -->
+<!-- GRIDMAP v0.4.6 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -322,6 +322,7 @@
   .dropzone.has-image { border-style: solid; border-color: rgba(var(--main-rgb),0.5); background: #000; }
   .dropzone.has-image .placeholder { display: none; }
   .dropzone.has-image .canvas-wrap { display: inline-block; cursor: pointer; }
+  .dropzone.has-image.pannable:not(.selecting) .canvas-wrap { cursor: grab; }   /* grabbing set inline while dragging */
   /* region-select mode: crosshair + always-visible selection overlay */
   .dropzone.selecting, .dropzone.selecting .canvas-wrap, .dropzone.selecting canvas { cursor: crosshair; }
   .dropzone.selecting #gridCanvas { opacity: 1; }
@@ -346,7 +347,7 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.4.5</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.4.6</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
@@ -535,7 +536,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v0.4.5';
+    const VER = ' // v0.4.6';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 
@@ -853,6 +854,7 @@
       syncAutoMode();
       zone.classList.add('has-image');
       zone.classList.remove('grid-on');  // grid hidden by default; canvas click toggles it (hover previews)
+      panX = panY = 0;                   // start centred (clears any pan from a previous map)
       if (exportBtn) exportBtn.disabled = false;
       renderDisplay();
       requestAnimationFrame(applyZoom);   // re-apply persisted zoom once layout has settled
@@ -876,13 +878,13 @@
     zone.addEventListener('click', (e) => {
       if (selecting || blockZoneClick) return;
       if (!loaded) { input.click(); return; }                                   // empty zone → browse for an image
-      if (e.ctrlKey || e.metaKey) { setZoom(zoom + ZOOM_CLICK_STEP); return; }   // Ctrl+LMB → zoom in
+      if (e.ctrlKey || e.metaKey) { zoomAt(e.clientX, e.clientY, ZOOM_CLICK_STEP); return; }   // Ctrl+LMB → zoom in (toward cursor)
       zone.classList.toggle('grid-on');                                         // plain LMB → toggle the detected grid
     });
     zone.addEventListener('contextmenu', (e) => {
       if (selecting || !loaded || !(e.ctrlKey || e.metaKey)) return;            // plain right-click → normal menu
-      e.preventDefault();                                                       // Ctrl+RMB → zoom out
-      setZoom(zoom - ZOOM_CLICK_STEP);
+      e.preventDefault();                                                       // Ctrl+RMB → zoom out (toward cursor)
+      zoomAt(e.clientX, e.clientY, -ZOOM_CLICK_STEP);
     });
     input.addEventListener('change', (e) => load(e.target.files[0]));
     zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
@@ -908,6 +910,7 @@
     let offX = 0, offY = 0;     // grid-origin nudge from the top-left (image px, sub-cell)
     let zoom = 100;             // map-view scale, 10..300 (% of the source image fitting the view)
     let dispScale = 1;          // current canvas buffer's image-px→buffer-px downscale (set by renderDisplay)
+    let panX = 0, panY = 0;     // pan offset (px) of the zoomed map within the viewport (left-drag)
     let selecting = false, regions = [], dragStart = null, dragRect = null, blockZoneClick = false;  // region-pick mode
     try {
       fixEdges = localStorage.getItem('gridmap:fixEdges') === '1';
@@ -1459,23 +1462,51 @@
       const s = Math.max(0.02, (fit / dispScale) * zoom / 100);
       mapC.style.width = Math.round(mapC.width * s) + 'px';
       mapC.style.height = Math.round(mapC.height * s) + 'px';
+      clampPan(); applyPan();
     }
     function setZoom(z) {
       zoom = Math.min(300, Math.max(10, Math.round(z)));
       save('gridmap:zoom', zoom);
       applyZoom();
     }
+    // Pan: offset the (centred) canvas within the viewport, clamped so the map
+    // can't be dragged off the visible area. Only meaningful when zoomed past fit.
+    function clampPan() {
+      const mx = Math.max(0, (mapC.offsetWidth - zone.clientWidth) / 2);
+      const my = Math.max(0, (mapC.offsetHeight - zone.clientHeight) / 2);
+      panX = Math.max(-mx, Math.min(mx, panX));
+      panY = Math.max(-my, Math.min(my, panY));
+      zone.classList.toggle('pannable', mx > 0.5 || my > 0.5);
+    }
+    function applyPan() {
+      canvasWrap.style.transform = 'translate(calc(-50% + ' + Math.round(panX) + 'px), calc(-50% + ' + Math.round(panY) + 'px))';
+    }
+    // Zoom about a screen point (cursor): keep that point fixed as the map scales.
+    function zoomAt(clientX, clientY, delta) {
+      const next = Math.min(300, Math.max(10, Math.round(zoom + delta)));
+      if (next === zoom) return;
+      if (loaded) {
+        const f = next / zoom, r = zone.getBoundingClientRect();
+        panX += (1 - f) * (clientX - (r.left + r.width / 2) - panX);
+        panY += (1 - f) * (clientY - (r.top + r.height / 2) - panY);
+      }
+      setZoom(next);   // applyZoom → clampPan → applyPan
+    }
+    function zoomCenter(delta) {
+      const r = zone.getBoundingClientRect();
+      zoomAt(r.left + r.width / 2, r.top + r.height / 2, delta);
+    }
     function bindZoom(btn, delta) {
       if (!btn) return;
-      btn.addEventListener('click', () => setZoom(zoom + delta));
+      btn.addEventListener('click', () => zoomCenter(delta));
       let to = null, iv = null;
       const stop = () => { clearTimeout(to); clearInterval(iv); to = iv = null; };
-      btn.addEventListener('mousedown', () => { stop(); to = setTimeout(() => { iv = setInterval(() => setZoom(zoom + delta), 45); }, 350); });
+      btn.addEventListener('mousedown', () => { stop(); to = setTimeout(() => { iv = setInterval(() => zoomCenter(delta), 45); }, 350); });
       ['mouseup', 'mouseleave', 'blur'].forEach((ev) => btn.addEventListener(ev, stop));
     }
     bindZoom(zoomIn, 10);
     bindZoom(zoomOut, -10);
-    if (zoomReset) zoomReset.addEventListener('click', () => setZoom(100));
+    if (zoomReset) zoomReset.addEventListener('click', () => { panX = panY = 0; setZoom(100); });
     window.addEventListener('resize', applyZoom);
     window.addEventListener('load', applyZoom);   // re-fit once CSS/layout is fully ready
     applyZoom();   // reflect the persisted zoom (sets the % label up front)
@@ -1554,6 +1585,28 @@
       blockZoneClick = true; setTimeout(() => { blockZoneClick = false; }, 0);   // swallow the trailing click
       if (e.ctrlKey || e.metaKey) drawSelOverlay();   // keep adding areas
       else runSelection();                            // release without Ctrl → run
+    });
+    // ---- Pan the zoomed map (left-drag). A press that doesn't move past the
+    // threshold stays a click (toggles the grid); a drag pans and is clamped. ----
+    let panStart = null, panMoved = false;
+    const PAN_THRESHOLD = 4;   // px of movement before a press becomes a pan
+    canvasWrap.addEventListener('mousedown', (e) => {
+      if (selecting || !loaded || e.button !== 0 || e.ctrlKey || e.metaKey) return;
+      panStart = { x: e.clientX, y: e.clientY, px: panX, py: panY };
+      panMoved = false;
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (!panStart) return;
+      const dx = e.clientX - panStart.x, dy = e.clientY - panStart.y;
+      if (!panMoved && Math.hypot(dx, dy) < PAN_THRESHOLD) return;
+      if (!panMoved) { panMoved = true; canvasWrap.style.cursor = 'grabbing'; }
+      panX = panStart.px + dx; panY = panStart.py + dy;
+      clampPan(); applyPan();
+    });
+    window.addEventListener('mouseup', () => {
+      if (!panStart) return;
+      panStart = null; canvasWrap.style.cursor = '';
+      if (panMoved) { blockZoneClick = true; setTimeout(() => { blockZoneClick = false; }, 0); }   // swallow the trailing click (keep grid state)
     });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && selecting) exitSelect(); });
 

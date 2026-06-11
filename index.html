@@ -1,4 +1,4 @@
-<!-- GRIDMAP v0.4.6 -->
+<!-- GRIDMAP v0.4.7 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -347,7 +347,7 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.4.6</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.4.7</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
@@ -536,7 +536,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v0.4.6';
+    const VER = ' // v0.4.7';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 
@@ -911,6 +911,8 @@
     let zoom = 100;             // map-view scale, 10..300 (% of the source image fitting the view)
     let dispScale = 1;          // current canvas buffer's image-px→buffer-px downscale (set by renderDisplay)
     let panX = 0, panY = 0;     // pan offset (px) of the zoomed map within the viewport (left-drag)
+    let trimRect = null;        // kept-region rect in canvas-buffer px (set by renderDisplay; for edge hit-testing)
+    let trimGeom = null;        // MANUAL buffer↔image mapping {ux0,uy0,scale,baseX,baseY,cellW,cellH} for edge drags
     let selecting = false, regions = [], dragStart = null, dragRect = null, blockZoneClick = false;  // region-pick mode
     try {
       fixEdges = localStorage.getItem('gridmap:fixEdges') === '1';
@@ -1328,6 +1330,34 @@
     // Grid overlay (hover layer) for a given line geometry, sized dW×dH.
     // Grid overlay sized dW×dH. An optional rect (canvas px) confines the lines
     // to a sub-region — used for the MANUAL window so the grid tracks it.
+    // The kept-region delimiter: a thick cyan box with a resize-grip chevron
+    // pair at the middle of each edge (< > on the left/right edges, ^ v on the
+    // top/bottom) signalling the draggable snap-to-grid trimmer lines.
+    function drawChevPair(ctx, x, y, horiz) {
+      const A = 7, W = 6, G = 4;   // arm half-length, chevron depth, gap from the edge line
+      ctx.beginPath();
+      if (horiz) {                 // < >  (drag left / right)
+        ctx.moveTo(x - G, y - A); ctx.lineTo(x - G - W, y); ctx.lineTo(x - G, y + A);
+        ctx.moveTo(x + G, y - A); ctx.lineTo(x + G + W, y); ctx.lineTo(x + G, y + A);
+      } else {                     // ^ v  (drag up / down)
+        ctx.moveTo(x - A, y - G); ctx.lineTo(x, y - G - W); ctx.lineTo(x + A, y - G);
+        ctx.moveTo(x - A, y + G); ctx.lineTo(x, y + G + W); ctx.lineTo(x + A, y + G);
+      }
+      ctx.stroke();
+    }
+    function drawDelimiter(ctx, x, y, w, h) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(0,240,255,0.95)';
+      ctx.lineWidth = 2; ctx.lineJoin = 'miter';
+      ctx.strokeRect(x, y, w, h);
+      ctx.lineWidth = 1.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      const cx = x + w / 2, cy = y + h / 2;
+      drawChevPair(ctx, x, cy, true);          // left edge   < >
+      drawChevPair(ctx, x + w, cy, true);      // right edge  < >
+      drawChevPair(ctx, cx, y, false);         // top edge    ^ v
+      drawChevPair(ctx, cx, y + h, false);     // bottom edge ^ v
+      ctx.restore();
+    }
     function drawGrid(vFrac, vOff, hFrac, hOff, dW, dH, rect) {
       gridC.width = dW; gridC.height = dH;
       const g = gridC.getContext('2d');
@@ -1385,8 +1415,11 @@
         paint(off, L, scale);
         const wX = Math.round((wx - ux0) * scale), wY = Math.round((wy - uy0) * scale);
         ctx.drawImage(off, wX, wY);
-        ctx.strokeStyle = 'rgba(0,240,255,0.95)'; ctx.lineWidth = 2; // window delimiter
-        ctx.strokeRect(wX, wY, off.width, off.height);
+        drawDelimiter(ctx, wX, wY, off.width, off.height);   // window delimiter + trim grips
+        const cellW = L.win.w / (winC1 - winC0), cellH = L.win.h / (winR1 - winR0);
+        trimRect = { x: wX, y: wY, w: off.width, h: off.height };
+        trimGeom = { ux0: ux0, uy0: uy0, scale: scale, cellW: cellW, cellH: cellH,
+          baseX: L.win.x - winC0 * cellW, baseY: L.win.y - winR0 * cellH };
         drawGrid(L.vFrac, L.vOff, L.hFrac, L.hOff, dW, dH, { x: wX, y: wY, w: off.width, h: off.height });
         setReadout(L.cols, L.rows);
         return;
@@ -1404,9 +1437,8 @@
         ctx.fillRect(0, ky + kh, dW, dH - (ky + kh));
         ctx.fillRect(0, ky, kx, kh);
         ctx.fillRect(kx + kw, ky, dW - (kx + kw), kh);
-        ctx.strokeStyle = 'rgba(0,240,255,0.95)'; // crop delimiter (kept region)
-        ctx.lineWidth = 2;
-        ctx.strokeRect(kx, ky, kw, kh);
+        drawDelimiter(ctx, kx, ky, kw, kh);   // crop delimiter (kept region) + trim grips
+        trimRect = { x: kx, y: ky, w: kw, h: kh }; trimGeom = null;
         const v = view();
         drawGrid(v.vFrac, v.vOff, v.hFrac, v.hOff, dW, dH);
         setReadout(L.cols, L.rows);
@@ -1415,6 +1447,7 @@
       const scale = Math.min(1, DISPLAY_MAX / Math.max(L.outW, L.outH));
       dispScale = scale;
       const { w: dW, h: dH } = paint(mapC, L, scale);
+      trimRect = { x: 0, y: 0, w: dW, h: dH }; trimGeom = null;
       drawGrid(L.vFrac, L.vOff, L.hFrac, L.hOff, dW, dH);
       setReadout(L.cols, L.rows);
     }
@@ -1586,16 +1619,75 @@
       if (e.ctrlKey || e.metaKey) drawSelOverlay();   // keep adding areas
       else runSelection();                            // release without Ctrl → run
     });
-    // ---- Pan the zoomed map (left-drag). A press that doesn't move past the
-    // threshold stays a click (toggles the grid); a drag pans and is clamped. ----
-    let panStart = null, panMoved = false;
-    const PAN_THRESHOLD = 4;   // px of movement before a press becomes a pan
+    // ---- Edge trimmers + pan (both left-drag) -------------------------------
+    // Grabbing within a few px of a kept-region edge resizes that edge, snapped
+    // to whole grid cells — it drives the MANUAL window (drag inward to trim,
+    // outward to extend into the fill). A drag anywhere else pans; a press that
+    // doesn't move stays a click (grid toggle).
+    let panStart = null, panMoved = false, trimDrag = null;
+    const PAN_THRESHOLD = 4;   // px of movement before a press becomes a pan/trim
+    const EDGE_GRAB = 9;       // px tolerance for grabbing an edge line
+    function trimEdgesAt(cx, cy) {
+      if (!trimRect || !mapC.width) return null;
+      const r = mapC.getBoundingClientRect();
+      const L = r.left + (trimRect.x / mapC.width) * r.width;
+      const R = r.left + ((trimRect.x + trimRect.w) / mapC.width) * r.width;
+      const T = r.top + (trimRect.y / mapC.height) * r.height;
+      const B = r.top + ((trimRect.y + trimRect.h) / mapC.height) * r.height;
+      const inX = cx >= L - EDGE_GRAB && cx <= R + EDGE_GRAB;
+      const inY = cy >= T - EDGE_GRAB && cy <= B + EDGE_GRAB;
+      const ed = { l: inY && Math.abs(cx - L) <= EDGE_GRAB, r: inY && Math.abs(cx - R) <= EDGE_GRAB,
+                   t: inX && Math.abs(cy - T) <= EDGE_GRAB, b: inX && Math.abs(cy - B) <= EDGE_GRAB };
+      return (ed.l || ed.r || ed.t || ed.b) ? ed : null;
+    }
+    function trimCursor(ed) {
+      if ((ed.l && ed.t) || (ed.r && ed.b)) return 'nwse-resize';
+      if ((ed.r && ed.t) || (ed.l && ed.b)) return 'nesw-resize';
+      return (ed.l || ed.r) ? 'ew-resize' : 'ns-resize';
+    }
+    function trimMoveTo(cx, cy) {                 // snap the dragged edge(s) to the nearest grid cell
+      const d = trimDrag; if (!d || !d.ppi) return;
+      const cellX = Math.round(((cx - d.ox) / d.ppi - d.baseX) / d.cellW);
+      const cellY = Math.round(((cy - d.oy) / d.ppi - d.baseY) / d.cellH);
+      if (d.edges.l) winC0 = Math.min(cellX, winC1 - 1);
+      if (d.edges.r) winC1 = Math.max(cellX, winC0 + 1);
+      if (d.edges.t) winR0 = Math.min(cellY, winR1 - 1);
+      if (d.edges.b) winR1 = Math.max(cellY, winR0 + 1);
+      renderDisplay();
+    }
     canvasWrap.addEventListener('mousedown', (e) => {
       if (selecting || !loaded || e.button !== 0 || e.ctrlKey || e.metaKey) return;
+      const ed = trimEdgesAt(e.clientX, e.clientY);
+      if (ed) { trimDrag = { edges: ed, x: e.clientX, y: e.clientY, started: false }; e.preventDefault(); return; }
       panStart = { x: e.clientX, y: e.clientY, px: panX, py: panY };
       panMoved = false;
     });
+    canvasWrap.addEventListener('mousemove', (e) => {   // hover affordance: resize cursor over an edge
+      if (trimDrag || panStart || selecting || !loaded) return;
+      const ed = trimEdgesAt(e.clientX, e.clientY);
+      canvasWrap.style.cursor = ed ? trimCursor(ed) : '';
+    });
     window.addEventListener('mousemove', (e) => {
+      if (trimDrag) {
+        if (!trimDrag.started) {
+          if (Math.hypot(e.clientX - trimDrag.x, e.clientY - trimDrag.y) < PAN_THRESHOLD) return;
+          trimDrag.started = true;
+          if (!manual) { setManual(); syncAutoMode(); renderDisplay(); }   // render → sets trimGeom
+          if (!trimGeom) { trimDrag = null; return; }
+          // capture a FIXED image↔screen mapping for the whole drag (stable even
+          // if extending the window resizes/recentres the canvas as it grows)
+          const r = mapC.getBoundingClientRect();
+          const ppi = r.width * trimGeom.scale / mapC.width;   // screen px per image px
+          trimDrag.ppi = ppi;
+          trimDrag.ox = r.left - trimGeom.ux0 * ppi;
+          trimDrag.oy = r.top - trimGeom.uy0 * ppi;
+          trimDrag.baseX = trimGeom.baseX; trimDrag.baseY = trimGeom.baseY;
+          trimDrag.cellW = trimGeom.cellW; trimDrag.cellH = trimGeom.cellH;
+          canvasWrap.style.cursor = trimCursor(trimDrag.edges);
+        }
+        e.preventDefault(); trimMoveTo(e.clientX, e.clientY);
+        return;
+      }
       if (!panStart) return;
       const dx = e.clientX - panStart.x, dy = e.clientY - panStart.y;
       if (!panMoved && Math.hypot(dx, dy) < PAN_THRESHOLD) return;
@@ -1604,6 +1696,12 @@
       clampPan(); applyPan();
     });
     window.addEventListener('mouseup', () => {
+      if (trimDrag) {
+        const moved = trimDrag.started;
+        trimDrag = null; canvasWrap.style.cursor = '';
+        if (moved) { blockZoneClick = true; setTimeout(() => { blockZoneClick = false; }, 0); }
+        return;
+      }
       if (!panStart) return;
       panStart = null; canvasWrap.style.cursor = '';
       if (panMoved) { blockZoneClick = true; setTimeout(() => { blockZoneClick = false; }, 0); }   // swallow the trailing click (keep grid state)

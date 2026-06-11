@@ -10,5 +10,5 @@ Items are removed from the list once they are implemented / resolved (no archive
 ## SMALL (Z version bump)
 
 1. Update preview png
-2. Make draggable snap-to-grid trimmer lines at all edges of preview
-3. Remove existing canvas controls
+2. Remove existing canvas controls
+3. "Random 3" button to run algoritm using random 3 regions on the map

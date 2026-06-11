@@ -1,4 +1,4 @@
-<!-- GRIDMAP v0.4.7 -->
+<!-- GRIDMAP v0.4.8 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -316,6 +316,11 @@
     position: absolute; inset: 0; width: 100%; height: 100%;
     pointer-events: none; opacity: 0; transition: opacity .15s;
   }
+  /* delimiter overlay: drawn at display resolution so the trimmer lines stay
+     crisp even when a low-res map is upscaled into the view */
+  #trimCanvas {
+    position: absolute; pointer-events: none;   /* left/top/size set in JS (overhangs the map) */
+  }
   .dropzone.grid-on #gridCanvas { opacity: 1; }
   .dropzone:not(.grid-on):not(.selecting) .canvas-wrap:hover #gridCanvas { opacity: 1; }
   .dropzone.grid-on:not(.selecting) .canvas-wrap:hover #gridCanvas { opacity: 0; }
@@ -347,7 +352,7 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.4.7</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.4.8</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
@@ -420,6 +425,7 @@
         <div class="canvas-wrap" id="canvasWrap">
           <canvas id="mapCanvas" aria-label="loaded map"></canvas>
           <canvas id="gridCanvas" aria-hidden="true"></canvas>
+          <canvas id="trimCanvas" aria-hidden="true"></canvas>
         </div>
         <input type="file" id="fileInput" accept="image/*" hidden />
       </div>
@@ -536,7 +542,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v0.4.7';
+    const VER = ' // v0.4.8';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 
@@ -807,7 +813,7 @@
 
   // ---- Working-area image import + analysis (drag-drop / paste / click) ----
   (function setupImport() {
-    const zone = $('dropzone'), mapC = $('mapCanvas'), gridC = $('gridCanvas'),
+    const zone = $('dropzone'), mapC = $('mapCanvas'), gridC = $('gridCanvas'), trimC = $('trimCanvas'),
       input = $('fileInput'), exportBtn = $('exportBtn'), canvasWrap = $('canvasWrap');
     if (!zone || !mapC || !gridC || !input) return;
     let loaded = null;        // current map + detected grid geometry, for PNG export
@@ -912,6 +918,7 @@
     let dispScale = 1;          // current canvas buffer's image-px→buffer-px downscale (set by renderDisplay)
     let panX = 0, panY = 0;     // pan offset (px) of the zoomed map within the viewport (left-drag)
     let trimRect = null;        // kept-region rect in canvas-buffer px (set by renderDisplay; for edge hit-testing)
+    let showDelim = false;      // whether the cyan delimiter box is shown (MANUAL / CROP modes)
     let trimGeom = null;        // MANUAL buffer↔image mapping {ux0,uy0,scale,baseX,baseY,cellW,cellH} for edge drags
     let selecting = false, regions = [], dragStart = null, dragRect = null, blockZoneClick = false;  // region-pick mode
     try {
@@ -1330,11 +1337,13 @@
     // Grid overlay (hover layer) for a given line geometry, sized dW×dH.
     // Grid overlay sized dW×dH. An optional rect (canvas px) confines the lines
     // to a sub-region — used for the MANUAL window so the grid tracks it.
-    // The kept-region delimiter: a thick cyan box with a resize-grip chevron
-    // pair at the middle of each edge (< > on the left/right edges, ^ v on the
-    // top/bottom) signalling the draggable snap-to-grid trimmer lines.
+    // The kept-region delimiter: a cyan box with a resize-grip chevron pair at
+    // the middle of each edge (< > on the left/right edges, ^ v on the top/bottom)
+    // signalling the draggable snap-to-grid trimmer lines. It is drawn on the
+    // #trimCanvas overlay at DISPLAY resolution (in CSS px) so the lines stay
+    // crisp and a constant size on screen, whatever the map's resolution or zoom.
     function drawChevPair(ctx, x, y, horiz) {
-      const A = 7, W = 6, G = 4;   // arm half-length, chevron depth, gap from the edge line
+      const A = 7, W = 6, G = 4;   // CSS px: arm half-length, chevron depth, gap from the edge line
       ctx.beginPath();
       if (horiz) {                 // < >  (drag left / right)
         ctx.moveTo(x - G, y - A); ctx.lineTo(x - G - W, y); ctx.lineTo(x - G, y + A);
@@ -1345,18 +1354,39 @@
       }
       ctx.stroke();
     }
-    function drawDelimiter(ctx, x, y, w, h) {
-      ctx.save();
+    function drawDelimiter(ctx, x, y, w, h) {   // x,y,w,h in CSS px on the (padded) overlay
       ctx.strokeStyle = 'rgba(0,240,255,0.95)';
-      ctx.lineWidth = 2; ctx.lineJoin = 'miter';
+      ctx.lineWidth = 3; ctx.lineJoin = 'miter';
       ctx.strokeRect(x, y, w, h);
-      ctx.lineWidth = 1.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      // Chevrons straddle their edge line; the overlay is padded beyond the map
+      // (see drawTrimOverlay) so the outward half stays on-canvas at the border.
       const cx = x + w / 2, cy = y + h / 2;
       drawChevPair(ctx, x, cy, true);          // left edge   < >
       drawChevPair(ctx, x + w, cy, true);      // right edge  < >
       drawChevPair(ctx, cx, y, false);         // top edge    ^ v
       drawChevPair(ctx, cx, y + h, false);     // bottom edge ^ v
-      ctx.restore();
+    }
+    // Repaint the delimiter overlay at the current display size (called after
+    // every render and every zoom, so it tracks the map and stays sharp).
+    const TRIM_PAD = 12;   // overlay overhang (CSS px) so edge grips aren't clipped at the border
+    function drawTrimOverlay() {
+      if (!trimC) return;
+      const dispW = mapC.clientWidth, dispH = mapC.clientHeight;
+      const dpr = window.devicePixelRatio || 1, P = TRIM_PAD;
+      // the overlay is larger than the map and overhangs it by P on every side
+      trimC.style.left = -P + 'px'; trimC.style.top = -P + 'px';
+      trimC.style.width = (dispW + 2 * P) + 'px'; trimC.style.height = (dispH + 2 * P) + 'px';
+      trimC.width = Math.max(1, Math.round((dispW + 2 * P) * dpr));
+      trimC.height = Math.max(1, Math.round((dispH + 2 * P) * dpr));
+      const g = trimC.getContext('2d');
+      g.setTransform(dpr, 0, 0, dpr, P * dpr, P * dpr);   // origin at the map's top-left; draw in CSS px
+      g.clearRect(-P, -P, dispW + 2 * P, dispH + 2 * P);
+      if (!showDelim || !trimRect || !mapC.width || !dispW) return;
+      const sx = dispW / mapC.width, sy = dispH / mapC.height;   // buffer px → CSS px
+      // snap to integer CSS px so the even-width border lands on pixel boundaries (crisp)
+      const x = Math.round(trimRect.x * sx), y = Math.round(trimRect.y * sy);
+      drawDelimiter(g, x, y, Math.round(trimRect.w * sx), Math.round(trimRect.h * sy));
     }
     function drawGrid(vFrac, vOff, hFrac, hOff, dW, dH, rect) {
       gridC.width = dW; gridC.height = dH;
@@ -1415,9 +1445,8 @@
         paint(off, L, scale);
         const wX = Math.round((wx - ux0) * scale), wY = Math.round((wy - uy0) * scale);
         ctx.drawImage(off, wX, wY);
-        drawDelimiter(ctx, wX, wY, off.width, off.height);   // window delimiter + trim grips
         const cellW = L.win.w / (winC1 - winC0), cellH = L.win.h / (winR1 - winR0);
-        trimRect = { x: wX, y: wY, w: off.width, h: off.height };
+        trimRect = { x: wX, y: wY, w: off.width, h: off.height }; showDelim = true;   // delimiter drawn on the overlay
         trimGeom = { ux0: ux0, uy0: uy0, scale: scale, cellW: cellW, cellH: cellH,
           baseX: L.win.x - winC0 * cellW, baseY: L.win.y - winR0 * cellH };
         drawGrid(L.vFrac, L.vOff, L.hFrac, L.hOff, dW, dH, { x: wX, y: wY, w: off.width, h: off.height });
@@ -1437,8 +1466,7 @@
         ctx.fillRect(0, ky + kh, dW, dH - (ky + kh));
         ctx.fillRect(0, ky, kx, kh);
         ctx.fillRect(kx + kw, ky, dW - (kx + kw), kh);
-        drawDelimiter(ctx, kx, ky, kw, kh);   // crop delimiter (kept region) + trim grips
-        trimRect = { x: kx, y: ky, w: kw, h: kh }; trimGeom = null;
+        trimRect = { x: kx, y: ky, w: kw, h: kh }; trimGeom = null; showDelim = true;   // delimiter drawn on the overlay
         const v = view();
         drawGrid(v.vFrac, v.vOff, v.hFrac, v.hOff, dW, dH);
         setReadout(L.cols, L.rows);
@@ -1447,7 +1475,7 @@
       const scale = Math.min(1, DISPLAY_MAX / Math.max(L.outW, L.outH));
       dispScale = scale;
       const { w: dW, h: dH } = paint(mapC, L, scale);
-      trimRect = { x: 0, y: 0, w: dW, h: dH }; trimGeom = null;
+      trimRect = { x: 0, y: 0, w: dW, h: dH }; trimGeom = null; showDelim = false;   // no delimiter box in this mode
       drawGrid(L.vFrac, L.vOff, L.hFrac, L.hOff, dW, dH);
       setReadout(L.cols, L.rows);
     }
@@ -1489,13 +1517,16 @@
       if (zoomVal) zoomVal.textContent = zoom + '%';
       if (!loaded || !mapC.width || !zone.clientWidth) return;
       const nW = loaded.image.naturalWidth, nH = loaded.image.naturalHeight;
-      const fit = Math.min((zone.clientWidth - 8) / nW, (zone.clientHeight - 8) / nH) || 1;
+      // 28 = ~14px breathing room each side so the delimiter's edge grips can
+      // overhang past the map without being clipped at the viewport border.
+      const fit = Math.min((zone.clientWidth - 28) / nW, (zone.clientHeight - 28) / nH) || 1;
       // fit is px-per-image-px; the buffer holds image px at dispScale, so divide
       // it back out to turn the buffer's pixel dimensions into on-screen size.
       const s = Math.max(0.02, (fit / dispScale) * zoom / 100);
       mapC.style.width = Math.round(mapC.width * s) + 'px';
       mapC.style.height = Math.round(mapC.height * s) + 'px';
       clampPan(); applyPan();
+      drawTrimOverlay();   // repaint the crisp delimiter at the new display size
     }
     function setZoom(z) {
       zoom = Math.min(300, Math.max(10, Math.round(z)));
@@ -1572,6 +1603,7 @@
       const dW = Math.max(1, Math.round(nW * scale)), dH = Math.max(1, Math.round(nH * scale));
       mapC.width = dW; mapC.height = dH;
       mapC.getContext('2d').drawImage(image, 0, 0, dW, dH);
+      showDelim = false;   // no trim delimiter while picking a region
       drawSelOverlay();
       applyZoom();
     }

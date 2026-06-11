@@ -1,4 +1,4 @@
-<!-- GRIDMAP v0.5.0 -->
+<!-- GRIDMAP v1.0.0 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -222,7 +222,7 @@
   .fill-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
   .workspace { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
   /* // GRID panel: the labelled AUTO|MANUAL toggle */
-  .topbar { display: flex; flex-direction: column; gap: 14px; margin-bottom: 14px; }
+  .topbar { display: flex; flex-direction: column; gap: 14px; margin-bottom: 14px; padding-top: 4px; }
   .topbar .fx-toggle { margin-top: 0; }
   /* // DETECTION: the [AUTO] [SELECT] button pair */
   .detect-group { display: flex; flex-direction: column; gap: 8px; }
@@ -314,7 +314,7 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.5.0</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">1.0.0</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
@@ -371,14 +371,8 @@
     <aside class="config config-right" data-augmented-ui="tl-clip br-clip border">
       <h2>// EXPORT</h2>
       <p class="hint">Save the map as a PNG, named with its NN×MM size.</p>
-      <div class="fx-toggle">
-        <span class="fx-label">// FIX EDGES:</span>
-        <button class="side-switch" id="fixEdgesToggle" type="button" data-pos="left" aria-label="fix partial edge cells">
-          <span class="thumb"></span><span class="lab l">OFF</span><span class="lab r">ON</span>
-        </button>
-      </div>
       <div class="fx-toggle" id="modeRow">
-        <span class="fx-label">// PARTIAL:</span>
+        <span class="fx-label">// EDGES MODE:</span>
         <button class="side-switch" id="modeToggle" type="button" data-pos="left" aria-label="partial cell handling">
           <span class="thumb"></span><span class="lab l">CROP</span><span class="lab r">EXPAND</span>
         </button>
@@ -466,7 +460,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v0.5.0';
+    const VER = ' // v1.0.0';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 
@@ -838,12 +832,13 @@
     });
 
     // ---- Export settings: edge-fix toggles + fill colour (all persisted) ----
-    const fixEdgesToggle = $('fixEdgesToggle'), modeToggle = $('modeToggle'), modeRow = $('modeRow'),
+    const modeToggle = $('modeToggle'),
       fillRow = $('fillRow'), fillSwatch = $('fillSwatch'), fillVibrant = $('fillVibrant'),
       fillColor = $('fillColor');
     const autoBtn = $('autoBtn'), selectBtn = $('selectBtn'), randomBtn = $('randomBtn'), cellBtn = $('cellBtn'),
       colVal = $('colVal'), rowVal = $('rowVal'), calcSize = $('calcSize'), calcVal = $('calcVal');
-    let fixEdges = false, edgeMode = 'crop', fillOverride = '', fillMode = 'vibrant';
+    const fixEdges = true;   // edge-fixing is always on (toggle removed)
+    let edgeMode = 'crop', fillOverride = '', fillMode = 'vibrant';
     let manual = false, winC0 = 0, winR0 = 0, winC1 = 0, winR1 = 0;   // MANUAL window, in grid-cell indices
     let gCols = 0, gRows = 0;   // current grid cell counts (NN×MM); ×2 //2 ×3 //3 rescale these
     let offX = 0, offY = 0;     // grid-origin nudge from the top-left (image px, sub-cell)
@@ -856,7 +851,6 @@
     let selecting = false, regions = [], dragStart = null, dragRect = null, blockZoneClick = false;  // region-pick mode
     let cellMode = false;   // "4 cells" sub-mode of selecting: one box → cell-size-seeded detection
     try {
-      fixEdges = localStorage.getItem('gridmap:fixEdges') === '1';
       if (localStorage.getItem('gridmap:edgeMode') === 'expand') edgeMode = 'expand';
       if (localStorage.getItem('gridmap:fillMode') === 'solid') fillMode = 'solid';
       fillOverride = toHex(localStorage.getItem('gridmap:fillColor') || '');
@@ -903,15 +897,10 @@
     }
 
     function syncToggles() {
-      if (fixEdgesToggle) fixEdgesToggle.dataset.pos = fixEdges ? 'right' : 'left';
       if (modeToggle) modeToggle.dataset.pos = edgeMode === 'expand' ? 'right' : 'left';
-      if (modeRow) modeRow.classList.toggle('disabled', !fixEdges);
       // the fill is used by EXPAND and by the MANUAL window's off-image area
-      if (fillRow) fillRow.classList.toggle('disabled', !(manual || (fixEdges && edgeMode === 'expand')));
+      if (fillRow) fillRow.classList.toggle('disabled', !(manual || edgeMode === 'expand'));
     }
-    if (fixEdgesToggle) fixEdgesToggle.addEventListener('click', () => {
-      fixEdges = !fixEdges; save('gridmap:fixEdges', fixEdges ? '1' : '0'); syncToggles(); renderDisplay();
-    });
     if (modeToggle) modeToggle.addEventListener('click', () => {
       edgeMode = edgeMode === 'expand' ? 'crop' : 'expand'; save('gridmap:edgeMode', edgeMode); syncToggles(); renderDisplay();
     });
@@ -970,19 +959,9 @@
     // import and when returning to AUTO (which resets everything).
     function applyAutoFix() {
       if (!loaded) return;
-      const image = loaded.image, nW = image.naturalWidth, nH = image.naturalHeight;
-      const v = view();
-      let partial = false;
-      if (!v.estimated) {
-        const cw = v.vFrac * nW, ch = v.hFrac * nH, ox = v.vOff * nW, oy = v.hOff * nH;
-        const nc = Math.floor((nW - ox) / cw + 1e-6), nr = Math.floor((nH - oy) / ch + 1e-6);
-        partial = ox > 1 || oy > 1 || (nW - (ox + nc * cw)) > 1 || (nH - (oy + nr * ch)) > 1;
-      }
-      fixEdges = partial; save('gridmap:fixEdges', partial ? '1' : '0');
-      if (partial) {
-        edgeMode = 'crop'; save('gridmap:edgeMode', 'crop');
-        fillOverride = ''; try { localStorage.removeItem('gridmap:fillColor'); } catch (e) {}
-      }
+      // edge-fixing is always on; reset to the CROP default and the detected fill
+      edgeMode = 'crop'; save('gridmap:edgeMode', 'crop');
+      fillOverride = ''; try { localStorage.removeItem('gridmap:fillColor'); } catch (e) {}
       syncToggles(); refreshFill();
     }
     // ---- // CANVAS d-pad ----
@@ -1085,11 +1064,7 @@
           cols: nCols, rows: nRows, vFrac: 1 / nCols, vOff: 0, hFrac: 1 / nRows, hOff: 0,
         };
       }
-      const { cols, rows, vFrac, vOff, hFrac, hOff } = view();
-      if (!fixEdges) {
-        return { outW: nW, outH: nH, src: null, dx: 0, dy: 0, fill: null,
-                 cols, rows, vFrac, vOff, hFrac, hOff };
-      }
+      const { vFrac, vOff, hFrac, hOff } = view();   // edge-fixing is always on → crop/expand below
       const cellW = vFrac * nW, cellH = hFrac * nH, ox = vOff * nW, oy = hOff * nH;
       const nCols = Math.max(1, Math.floor((nW - ox) / cellW + 1e-6));
       const nRows = Math.max(1, Math.floor((nH - oy) / cellH + 1e-6));

@@ -1,4 +1,4 @@
-<!-- GRIDMAP v1.1.0 -->
+<!-- GRIDMAP v1.1.1 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -89,7 +89,7 @@
     padding: 28px 18px 64px;
     background-image: repeating-linear-gradient(0deg, rgba(var(--main-rgb),0.03) 0 1px, transparent 1px 3px);
   }
-  .app { max-width: 1560px; margin: 0 auto; }
+  .app { max-width: 1800px; margin: 0 auto; }
 
   /* ---------- Header (ported from chronos/commlink) ---------- */
   header.top {
@@ -238,7 +238,7 @@
   .config .calc-size.estimated .calc-val { color: var(--main); }
   /* central drop zone / map canvas */
   .dropzone {
-    flex: 1; min-height: 440px; position: relative;
+    flex: 1; min-height: max(440px, calc(100vh - 220px)); position: relative;
     display: flex; align-items: center; justify-content: center;
     border: 2px dashed rgba(var(--main-rgb),0.35);
     background: repeating-linear-gradient(45deg, rgba(var(--main-rgb),0.03) 0 12px, transparent 12px 24px);
@@ -314,7 +314,7 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable" data-i18n="tag">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">1.1.0</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable" data-i18n="tag">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">1.1.1</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
@@ -611,7 +611,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v1.1.0';
+    const VER = ' // v1.1.1';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 

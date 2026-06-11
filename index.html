@@ -1,4 +1,4 @@
-<!-- GRIDMAP v0.4.9 -->
+<!-- GRIDMAP v0.4.10 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -352,7 +352,7 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.4.9</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">0.4.10</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
@@ -370,6 +370,7 @@
           </div>
           <div class="detect-btns">
             <button class="btn detect-btn" id="randomBtn" type="button" data-augmented-ui="tl-clip br-clip both" title="Samples 3 random areas to detect from — click again to re-roll.">RANDOM 3</button>
+            <button class="btn detect-btn" id="cellBtn" type="button" data-augmented-ui="tl-clip br-clip both" title="Drag a box around any 2×2 block of cells; the grid is detected at that cell size (the more precisely you align it, the better).">4 CELLS</button>
           </div>
         </div>
       </div>
@@ -543,7 +544,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v0.4.9';
+    const VER = ' // v0.4.10';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 
@@ -711,14 +712,22 @@
     return { offset: bo, strength: (n > 0 && mean > 0) ? (bs / n) / mean : 0 };
   }
 
-  function analyzeImageData(img, regions) {
+  function analyzeImageData(img, regions, opts) {
     const { data, width: W, height: H } = img;
     const L = toLuma(data, W, H);
 
     // SQUARE cells → one px cell-size shared by both axes; restrict the search
     // to periods that keep both axes within [MIN_CELLS, MAX_CELLS].
-    const pMin = Math.max(4, Math.ceil(Math.max(W, H) / MAX_CELLS));
-    const pMax = Math.floor(Math.min(W, H) / MIN_CELLS);
+    let pMin = Math.max(4, Math.ceil(Math.max(W, H) / MAX_CELLS));
+    let pMax = Math.floor(Math.min(W, H) / MIN_CELLS);
+    // A user-supplied cell-size hint (the "4 cells" tool) overrides the bounds
+    // with a tight band around it — the ±margin isolates the true period from
+    // its half/double harmonics, so detection locks onto the measured size.
+    if (opts && opts.period > 0) {
+      const m = opts.margin || 0.25;
+      pMin = Math.max(4, Math.round(opts.period * (1 - m)));
+      pMax = Math.min(Math.floor(Math.min(W, H) / 2), Math.round(opts.period * (1 + m)));
+    }
     const fail = {
       cols: 0, rows: 0, detected: false, confidence: 0,
       ax: { periodFrac: 0, offsetFrac: 0 }, ay: { periodFrac: 0, offsetFrac: 0 },
@@ -823,7 +832,7 @@
     // Run detection on a downscaled copy of loaded.image — over the whole image,
     // or only the user-picked region(s) — and write the result into loaded's
     // geometry. (loaded.image must already be set.)
-    function detectGrid(regions) {
+    function detectGrid(regions, seedCell) {
       const image = loaded.image, nW = image.naturalWidth, nH = image.naturalHeight;
       const aScale = Math.min(1, ANALYSIS_MAX / Math.max(nW, nH));
       const aW = Math.max(1, Math.round(nW * aScale)), aH = Math.max(1, Math.round(nH * aScale));
@@ -831,7 +840,8 @@
       const actx = ac.getContext('2d', { willReadFrequently: true });
       actx.drawImage(image, 0, 0, aW, aH);
       const scaled = regions && regions.map((r) => ({ x: r.x * aScale, y: r.y * aScale, w: r.w * aScale, h: r.h * aScale }));
-      const res = analyzeImageData(actx.getImageData(0, 0, aW, aH), scaled);
+      const opts = (seedCell > 0) ? { period: seedCell * aScale, margin: 0.25 } : null;   // cell-size hint (image px → analysis px)
+      const res = analyzeImageData(actx.getImageData(0, 0, aW, aH), scaled, opts);
       if (res.detected) {
         loaded.cols = res.cols; loaded.rows = res.rows; loaded.estimated = false;
         loaded.vFrac = res.ax.periodFrac; loaded.vOff = res.ax.offsetFrac;
@@ -909,8 +919,8 @@
     const fixEdgesToggle = $('fixEdgesToggle'), modeToggle = $('modeToggle'), modeRow = $('modeRow'),
       fillRow = $('fillRow'), fillSwatch = $('fillSwatch'), fillVibrant = $('fillVibrant'),
       fillColor = $('fillColor');
-    const autoBtn = $('autoBtn'), selectBtn = $('selectBtn'), randomBtn = $('randomBtn'), colVal = $('colVal'), rowVal = $('rowVal'),
-      calcSize = $('calcSize'), calcVal = $('calcVal'), panReset = $('panReset');
+    const autoBtn = $('autoBtn'), selectBtn = $('selectBtn'), randomBtn = $('randomBtn'), cellBtn = $('cellBtn'),
+      colVal = $('colVal'), rowVal = $('rowVal'), calcSize = $('calcSize'), calcVal = $('calcVal'), panReset = $('panReset');
     let fixEdges = false, edgeMode = 'crop', fillOverride = '', fillMode = 'vibrant';
     let manual = false, winC0 = 0, winR0 = 0, winC1 = 0, winR1 = 0;   // MANUAL window, in grid-cell indices
     let gCols = 0, gRows = 0;   // current grid cell counts (NN×MM); ×2 //2 ×3 //3 rescale these
@@ -922,6 +932,7 @@
     let showDelim = false;      // whether the cyan delimiter box is shown (MANUAL / CROP modes)
     let trimGeom = null;        // MANUAL buffer↔image mapping {ux0,uy0,scale,baseX,baseY,cellW,cellH} for edge drags
     let selecting = false, regions = [], dragStart = null, dragRect = null, blockZoneClick = false;  // region-pick mode
+    let cellMode = false;   // "4 cells" sub-mode of selecting: one box → cell-size-seeded detection
     try {
       fixEdges = localStorage.getItem('gridmap:fixEdges') === '1';
       if (localStorage.getItem('gridmap:edgeMode') === 'expand') edgeMode = 'expand';
@@ -1027,9 +1038,10 @@
       };
     }
     function syncAutoMode() {
-      // AUTO lit on the auto-detected grid; SELECT lit while picking areas
+      // AUTO lit on the auto-detected grid; SELECT / 4-CELLS lit while picking
       if (autoBtn) autoBtn.classList.toggle('active', !manual && !selecting);
-      if (selectBtn) selectBtn.classList.toggle('active', selecting);
+      if (selectBtn) selectBtn.classList.toggle('active', selecting && !cellMode);
+      if (cellBtn) cellBtn.classList.toggle('active', selecting && cellMode);
       syncToggles();   // the FILL control is also usable in MANUAL (off-image fill)
     }
     // Re-apply the smart fix-edges default from the DETECTED grid — used on
@@ -1133,7 +1145,7 @@
     // AUTO button: run the default 5-point detection and return to the auto grid.
     function runAuto() {
       if (!loaded) return;
-      selecting = false; regions = []; dragStart = null; dragRect = null;   // leave region-pick
+      selecting = false; cellMode = false; regions = []; dragStart = null; dragRect = null;   // leave region-pick
       zone.classList.remove('selecting');
       detectGrid(null);                             // default quincunx (5-point) detection
       manual = false; offX = 0; offY = 0;
@@ -1157,7 +1169,7 @@
     }
     function runRandom() {
       if (!loaded) return;
-      selecting = false; regions = []; dragStart = null; dragRect = null;   // leave region-pick
+      selecting = false; cellMode = false; regions = []; dragStart = null; dragRect = null;   // leave region-pick
       zone.classList.remove('selecting');
       detectGrid(randomRegions(3));
       manual = false; offX = 0; offY = 0;
@@ -1633,18 +1645,32 @@
       applyZoom();
     }
     function enterSelect() {
-      selecting = true; regions = []; dragRect = null; dragStart = null;
+      selecting = true; cellMode = false; regions = []; dragRect = null; dragStart = null;
+      zone.classList.add('selecting');
+      syncAutoMode(); renderDisplay();
+    }
+    function enterCellSelect() {                 // "4 cells": drag one box around a 2×2 block
+      selecting = true; cellMode = true; regions = []; dragRect = null; dragStart = null;
       zone.classList.add('selecting');
       syncAutoMode(); renderDisplay();
     }
     function exitSelect() {
-      selecting = false; regions = []; dragRect = null; dragStart = null;
+      selecting = false; cellMode = false; regions = []; dragRect = null; dragStart = null;
       zone.classList.remove('selecting');
+      syncAutoMode(); renderDisplay();
+    }
+    function runCellSeed(box) {                   // box ≈ a 2×2 cell block → seed = box ÷ 2 (both axes averaged)
+      selecting = false; cellMode = false; regions = []; dragRect = null; dragStart = null;
+      zone.classList.remove('selecting');
+      const seed = (box.w / 2 + box.h / 2) / 2;   // square cell size in image px
+      detectGrid(null, seed);                     // quincunx probe, period locked near `seed` ± margin
+      manual = false; gCols = loaded.cols; gRows = loaded.rows; offX = 0; offY = 0;
+      applyAutoFix();
       syncAutoMode(); renderDisplay();
     }
     function runSelection() {
       const picked = regions.slice();
-      selecting = false; dragRect = null; dragStart = null; regions = [];
+      selecting = false; cellMode = false; dragRect = null; dragStart = null; regions = [];
       if (selectBtn) selectBtn.classList.remove('active');
       zone.classList.remove('selecting');
       if (picked.length) {               // re-detect from the chosen area(s), back to AUTO
@@ -1654,7 +1680,8 @@
       }
       syncAutoMode(); renderDisplay();
     }
-    if (selectBtn) selectBtn.addEventListener('click', () => { if (!loaded) return; selecting ? exitSelect() : enterSelect(); });
+    if (selectBtn) selectBtn.addEventListener('click', () => { if (!loaded) return; (selecting && !cellMode) ? exitSelect() : enterSelect(); });
+    if (cellBtn) cellBtn.addEventListener('click', () => { if (!loaded) return; (selecting && cellMode) ? exitSelect() : enterCellSelect(); });
     canvasWrap.addEventListener('mousedown', (e) => {
       if (!selecting || e.button !== 0) return;
       e.preventDefault();
@@ -1671,8 +1698,13 @@
       const p = evToImage(e);
       const r = { x: Math.min(dragStart.x, p.x), y: Math.min(dragStart.y, p.y), w: Math.abs(p.x - dragStart.x), h: Math.abs(p.y - dragStart.y) };
       dragStart = null; dragRect = null;
-      if (r.w > 4 && r.h > 4) regions.push(r);    // ignore stray clicks
       blockZoneClick = true; setTimeout(() => { blockZoneClick = false; }, 0);   // swallow the trailing click
+      if (cellMode) {                                 // "4 cells": one box → seed the cell size
+        if (r.w > 8 && r.h > 8) runCellSeed(r);
+        else drawSelOverlay();                        // too small to measure — let them redraw
+        return;
+      }
+      if (r.w > 4 && r.h > 4) regions.push(r);    // ignore stray clicks
       if (e.ctrlKey || e.metaKey) drawSelOverlay();   // keep adding areas
       else runSelection();                            // release without Ctrl → run
     });

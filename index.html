@@ -1,4 +1,4 @@
-<!-- GRIDMAP v1.2.0 -->
+<!-- GRIDMAP v1.2.1 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -248,13 +248,16 @@
   .detect-btns { display: flex; gap: 8px; }
   .detect-btn { flex: 1; min-width: 0; height: 38px; letter-spacing: 2px; white-space: nowrap; }
   .btn.detect-btn.active { background: color-mix(in srgb, var(--btn-color) 28%, transparent); box-shadow: 0 0 12px color-mix(in srgb, var(--btn-color) 50%, transparent); }
-  /* resulting size (NN×MM) shown in the // EXPORT panel, above SAVE PNG */
-  .config .calc-size {
-    font-size: 19px; letter-spacing: 1.5px; font-weight: 700; text-transform: uppercase;
-    color: var(--main); text-align: center; margin-top: 18px;
+  /* result readout: // RESULT SIZE label (col 1, left) + the cell count (NN×MM)
+     and the exported pixel size stacked in col 2 (right) */
+  .config .calc-size { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 18px; }
+  .config .calc-size .size-label {
+    font-size: 16px; letter-spacing: 1.5px; font-weight: 700; text-transform: uppercase; color: var(--main);
   }
-  .config .calc-size .calc-val { margin-left: 6px; color: var(--accent); }
+  .config .calc-size .size-vals { display: flex; flex-direction: column; align-items: center; gap: 2px; line-height: 1.15; }
+  .config .calc-size .calc-val { font-size: 24px; font-weight: 700; letter-spacing: 1.5px; color: var(--accent); }
   .config .calc-size.estimated .calc-val { color: var(--main); }
+  .config .calc-size .out-val { font-size: 14px; letter-spacing: 1px; text-transform: uppercase; color: rgba(var(--main-rgb),0.7); }
   /* central drop zone / map canvas */
   .dropzone {
     flex: 1; min-height: max(440px, calc(100vh - 220px)); position: relative;
@@ -333,7 +336,7 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable" data-i18n="tag">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">1.2.0</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable" data-i18n="tag">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">1.2.1</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
@@ -425,7 +428,13 @@
       <hr class="divider" />
       <h2 data-i18n="h_export">// EXPORT</h2>
       <p class="hint" data-i18n="export_hint">Save the map as a PNG, named with its NN×MM size.</p>
-      <div class="calc-size" id="calcSize"><span data-i18n="l_result">// RESULT SIZE:</span> <span class="calc-val" id="calcVal">??×??</span></div>
+      <div class="calc-size" id="calcSize">
+        <span class="size-label" data-i18n="l_result">// RESULT SIZE:</span>
+        <span class="size-vals">
+          <span class="calc-val" id="calcVal">??×??</span>
+          <span class="out-val" id="outVal">??×?? PX</span>
+        </span>
+      </div>
       <button class="btn export-btn" data-augmented-ui="tl-clip br-clip both" id="exportBtn" type="button" disabled data-i18n="b_save">⬇ SAVE PNG</button>
     </aside>
   </div>
@@ -456,7 +465,7 @@
       l_result: '// RESULT SIZE:', b_save: '⬇ SAVE PNG', saved: '✓ SAVED',
       tag: 'GRID MAP ANALYZER', tag_alt: 'DEAD CELLS',
       h_effects: '// EFFECTS', l_night: '// NIGHT MODE:', l_tint: '// TINT:', b_off: 'OFF', b_on: 'ON',
-      t_nighttint: 'night tint colour — click to pick', l_potency: '// POTENCY:', h_output: '// OUTPUT' },
+      t_nighttint: 'night tint colour — click to pick', l_potency: '// POTENCY:', h_output: '// OUTPUT', l_outsize: '// OUTPUT SIZE:' },
     ru: { b_import: '⬆ ИМПОРТ', h_image: '// ИЗОБРАЖЕНИЕ', h_detect: '// ОПРЕДЕЛЕНИЕ СЕТКИ:',
       b_auto: 'АВТО', b_select: 'ВЫБОР', b_random: 'СЛУЧ. 3', b_cells: '4 ЯЧЕЙКИ',
       t_auto: 'Запускает автоматическое определение по 5 точкам.',
@@ -474,7 +483,7 @@
       l_result: '// РАЗМЕР:', b_save: '⬇ СОХРАНИТЬ PNG', saved: '✓ СОХРАНЕНО',
       tag: 'АНАЛИЗАТОР СЕТКИ', tag_alt: 'МЕРТВЫЕ КЛЕТКИ',
       h_effects: '// ЭФФЕКТЫ', l_night: '// НОЧНОЙ РЕЖИМ:', l_tint: '// ОТТЕНОК:', b_off: 'ВЫКЛ', b_on: 'ВКЛ',
-      t_nighttint: 'цвет ночного оттенка — нажмите, чтобы выбрать', l_potency: '// СИЛА:', h_output: '// ВЫВОД' },
+      t_nighttint: 'цвет ночного оттенка — нажмите, чтобы выбрать', l_potency: '// СИЛА:', h_output: '// ВЫВОД', l_outsize: '// РАЗМЕР В ПИКСЕЛЯХ:' },
     fr: { b_import: '⬆ IMPORTER', h_image: '// IMAGE', h_detect: '// DÉTECTION DE GRILLE :',
       b_auto: 'AUTO', b_select: 'ZONE', b_random: 'ALÉA. 3', b_cells: '4 CASES',
       t_auto: 'Lance la détection automatique en 5 points (quinconce).',
@@ -492,7 +501,7 @@
       l_result: '// TAILLE :', b_save: '⬇ ENREGISTRER PNG', saved: '✓ ENREGISTRÉ',
       tag: 'ANALYSEUR DE GRILLE', tag_alt: 'CASES MORTES',
       h_effects: '// EFFETS', l_night: '// MODE NUIT :', l_tint: '// TEINTE :', b_off: 'OFF', b_on: 'ON',
-      t_nighttint: 'couleur de teinte nuit — cliquez pour choisir', l_potency: '// INTENSITÉ :', h_output: '// SORTIE' },
+      t_nighttint: 'couleur de teinte nuit — cliquez pour choisir', l_potency: '// INTENSITÉ :', h_output: '// SORTIE', l_outsize: '// TAILLE EN PX :' },
     de: { b_import: '⬆ IMPORTIEREN', h_image: '// BILD', h_detect: '// RASTERERKENNUNG:',
       b_auto: 'AUTO', b_select: 'AUSWAHL', b_random: 'ZUFALL 3', b_cells: '4 ZELLEN',
       t_auto: 'Startet die automatische 5-Punkt-Erkennung.',
@@ -510,7 +519,7 @@
       l_result: '// GRÖSSE:', b_save: '⬇ PNG SPEICHERN', saved: '✓ GESPEICHERT',
       tag: 'RASTER-ANALYSE', tag_alt: 'TOTE ZELLEN',
       h_effects: '// EFFEKTE', l_night: '// NACHTMODUS:', l_tint: '// TÖNUNG:', b_off: 'AUS', b_on: 'EIN',
-      t_nighttint: 'Nachttönung-Farbe — klicken zum Wählen', l_potency: '// STÄRKE:', h_output: '// AUSGABE' },
+      t_nighttint: 'Nachttönung-Farbe — klicken zum Wählen', l_potency: '// STÄRKE:', h_output: '// AUSGABE', l_outsize: '// GRÖSSE IN PX:' },
     es: { b_import: '⬆ IMPORTAR', h_image: '// IMAGEN', h_detect: '// DETECCIÓN DE CUADRÍCULA:',
       b_auto: 'AUTO', b_select: 'ÁREA', b_random: 'AZAR 3', b_cells: '4 CELDAS',
       t_auto: 'Ejecuta la detección automática de 5 puntos.',
@@ -528,7 +537,7 @@
       l_result: '// TAMAÑO:', b_save: '⬇ GUARDAR PNG', saved: '✓ GUARDADO',
       tag: 'ANALIZADOR DE CUADRÍCULA', tag_alt: 'CELDAS MUERTAS',
       h_effects: '// EFECTOS', l_night: '// MODO NOCHE:', l_tint: '// TINTE:', b_off: 'OFF', b_on: 'ON',
-      t_nighttint: 'color del tinte nocturno — clic para elegir', l_potency: '// INTENSIDAD:', h_output: '// SALIDA' },
+      t_nighttint: 'color del tinte nocturno — clic para elegir', l_potency: '// INTENSIDAD:', h_output: '// SALIDA', l_outsize: '// TAMAÑO EN PX:' },
     it: { b_import: '⬆ IMPORTA', h_image: '// IMMAGINE', h_detect: '// RILEVAMENTO GRIGLIA:',
       b_auto: 'AUTO', b_select: 'AREA', b_random: 'CASUALE 3', b_cells: '4 CELLE',
       t_auto: 'Esegue il rilevamento automatico a 5 punti.',
@@ -546,7 +555,7 @@
       l_result: '// DIMENSIONE:', b_save: '⬇ SALVA PNG', saved: '✓ SALVATO',
       tag: 'ANALIZZATORE DI GRIGLIA', tag_alt: 'CELLE MORTE',
       h_effects: '// EFFETTI', l_night: '// MODALITÀ NOTTE:', l_tint: '// TINTA:', b_off: 'OFF', b_on: 'ON',
-      t_nighttint: 'colore tinta notturna — clicca per scegliere', l_potency: '// INTENSITÀ:', h_output: '// USCITA' },
+      t_nighttint: 'colore tinta notturna — clicca per scegliere', l_potency: '// INTENSITÀ:', h_output: '// USCITA', l_outsize: '// DIMENSIONE IN PX:' },
     ja: { b_import: '⬆ 画像を読み込む', h_image: '// 画像', h_detect: '// グリッド検出:',
       b_auto: '自動', b_select: '範囲選択', b_random: 'ランダム3', b_cells: '4セル',
       t_auto: '自動5点検出を実行します。',
@@ -564,7 +573,7 @@
       l_result: '// 結果サイズ:', b_save: '⬇ PNGを保存', saved: '✓ 保存しました',
       tag: 'グリッド解析', tag_alt: '死んだセル',
       h_effects: '// エフェクト', l_night: '// ナイトモード:', l_tint: '// 色調:', b_off: 'オフ', b_on: 'オン',
-      t_nighttint: 'ナイト色 — クリックで選択', l_potency: '// 強さ:', h_output: '// 出力' },
+      t_nighttint: 'ナイト色 — クリックで選択', l_potency: '// 強さ:', h_output: '// 出力', l_outsize: '// 出力サイズ:' },
     zh: { b_import: '⬆ 导入图像', h_image: '// 图像', h_detect: '// 网格检测：',
       b_auto: '自动', b_select: '选择区域', b_random: '随机3', b_cells: '4格',
       t_auto: '运行自动五点检测。',
@@ -582,7 +591,7 @@
       l_result: '// 结果尺寸：', b_save: '⬇ 保存 PNG', saved: '✓ 已保存',
       tag: '网格地图分析器', tag_alt: '死亡格子',
       h_effects: '// 效果', l_night: '// 夜间模式：', l_tint: '// 色调：', b_off: '关', b_on: '开',
-      t_nighttint: '夜间色调 — 点击选择', l_potency: '// 强度：', h_output: '// 输出' },
+      t_nighttint: '夜间色调 — 点击选择', l_potency: '// 强度：', h_output: '// 输出', l_outsize: '// 输出尺寸：' },
   };
   let curLang = 'en';
   const t = (key) => ((I18N[curLang] || I18N.en)[key]) || I18N.en[key] || '';
@@ -667,7 +676,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v1.2.0';
+    const VER = ' // v1.2.1';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 
@@ -1045,7 +1054,7 @@
     const nightToggle = $('nightToggle'), nightColorRow = $('nightColorRow'), nightSwatch = $('nightSwatch'), nightInput = $('nightInput'),
       potencyRow = $('potencyRow'), nightPotencySlider = $('nightPotency');
     const autoBtn = $('autoBtn'), selectBtn = $('selectBtn'), randomBtn = $('randomBtn'), cellBtn = $('cellBtn'),
-      colVal = $('colVal'), rowVal = $('rowVal'), calcSize = $('calcSize'), calcVal = $('calcVal');
+      colVal = $('colVal'), rowVal = $('rowVal'), calcSize = $('calcSize'), calcVal = $('calcVal'), outVal = $('outVal');
     const fixEdges = true;   // edge-fixing is always on (toggle removed)
     let edgeMode = 'crop', fillOverride = '', fillMode = 'vibrant';
     let nightMode = false, nightColor = '#1c2c5e', nightPotency = 0.7;   // EFFECTS → NIGHT MODE tint (dark blue, 0..1 strength), baked into preview + export
@@ -1479,7 +1488,7 @@
       for (let f = hOff % hFrac; f <= 1.0001; f += hFrac) { const y = Math.round(ry + f * rh) + 0.5; g.moveTo(rx, y); g.lineTo(rx + rw, y); }
       g.stroke();
     }
-    function setReadout(cols, rows) {
+    function setReadout(cols, rows, outW, outH) {
       const est = view().estimated;
       if (colVal) colVal.textContent = cols;
       if (rowVal) rowVal.textContent = rows;
@@ -1487,6 +1496,8 @@
       // (reflects manual edits and crop/expand)
       if (calcVal) calcVal.textContent = cols + '×' + rows;
       if (calcSize) calcSize.classList.toggle('estimated', est);
+      // the exported PNG's pixel dimensions (paint() runs at scale 1 → outW×outH)
+      if (outVal) outVal.textContent = Math.round(outW) + '×' + Math.round(outH) + ' PX';
       applyZoom();           // re-fit the on-screen map to the current zoom
     }
 
@@ -1526,7 +1537,7 @@
         trimGeom = { ux0: ux0, uy0: uy0, scale: scale, cellW: cellW, cellH: cellH,
           baseX: L.win.x - winC0 * cellW, baseY: L.win.y - winR0 * cellH };
         drawGrid(L.vFrac, L.vOff, L.hFrac, L.hOff, dW, dH, { x: wX, y: wY, w: off.width, h: off.height });
-        setReadout(L.cols, L.rows);
+        setReadout(L.cols, L.rows, L.outW, L.outH);
         return;
       }
       if (fixEdges && edgeMode === 'crop' && L.src) {
@@ -1546,7 +1557,7 @@
         trimRect = { x: kx, y: ky, w: kw, h: kh }; trimGeom = null; showDelim = true;   // delimiter drawn on the overlay
         const v = view();
         drawGrid(v.vFrac, v.vOff, v.hFrac, v.hOff, dW, dH);
-        setReadout(L.cols, L.rows);
+        setReadout(L.cols, L.rows, L.outW, L.outH);
         return;
       }
       const scale = Math.min(1, DISPLAY_MAX / Math.max(L.outW, L.outH));
@@ -1554,7 +1565,7 @@
       const { w: dW, h: dH } = paint(mapC, L, scale);
       trimRect = { x: 0, y: 0, w: dW, h: dH }; trimGeom = null; showDelim = false;   // no delimiter box in this mode
       drawGrid(L.vFrac, L.vOff, L.hFrac, L.hOff, dW, dH);
-      setReadout(L.cols, L.rows);
+      setReadout(L.cols, L.rows, L.outW, L.outH);
     }
 
     // PNG export = the same layout at full resolution.

@@ -5,7 +5,7 @@ Items are removed from the list once they are implemented / resolved (no archive
 
 ## BIG (Y version bump)
 
-
+1. Add a mode where user is drawing 1 adjustable cell and the app conrinues it in all directions to form a grid
 
 ## SMALL (Z version bump)
 

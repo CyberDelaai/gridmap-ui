@@ -1,4 +1,4 @@
-<!-- GRIDMAP v1.2.3 -->
+<!-- GRIDMAP v1.2.4 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -208,7 +208,7 @@
   /* same footprint as a .side-switch toggle (112px); the two mode buttons
      split it evenly so the fill control lines up with the toggles above it */
   .fill-group { display: flex; align-items: center; gap: 6px; width: 112px; }
-  .fill-swatch, .fill-vibrant {
+  .fill-swatch, .fill-vibrant, .fill-transparent {
     flex: 1; height: 30px; cursor: pointer; border: none; padding: 0;
     --aug-border-all: 1px; --aug-border-bg: rgba(255, 255, 255, 0.3);
     --aug-tl: 8px; --aug-br: 8px;
@@ -217,8 +217,24 @@
   .fill-vibrant {
     background: radial-gradient(circle at 32% 30%, #ff3d81 0%, #ff9e00 30%, #ffe600 48%, #2bd9a0 66%, #38a8ff 82%, #b15cff 100%);
   }
+  /* TRANSPARENT fill mode: a checkerboard swatch = leave the padding as PNG alpha */
+  .fill-transparent {
+    background-color: #cfcfcf;
+    background-image:
+      linear-gradient(45deg, #8a8a8a 25%, transparent 25%), linear-gradient(-45deg, #8a8a8a 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #8a8a8a 75%), linear-gradient(-45deg, transparent 75%, #8a8a8a 75%);
+    background-size: 10px 10px; background-position: 0 0, 0 5px, 5px -5px, -5px 0;
+  }
   /* the active fill mode gets a bright border */
-  .fill-swatch.active, .fill-vibrant.active { --aug-border-bg: var(--main); }
+  .fill-swatch.active, .fill-vibrant.active, .fill-transparent.active { --aug-border-bg: var(--main); }
+  /* preview transparency: checkerboard behind the canvas when transparent fill is active */
+  .dropzone.transp #mapCanvas {
+    background-color: #161616;
+    background-image:
+      linear-gradient(45deg, #262626 25%, transparent 25%), linear-gradient(-45deg, #262626 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #262626 75%), linear-gradient(-45deg, transparent 75%, #262626 75%);
+    background-size: 20px 20px; background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+  }
   /* the real colour input is off-screen; the swatch opens it via showPicker() */
   .fill-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
   /* faded-edge cyan horizontal divider between config sections */
@@ -343,7 +359,7 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable" data-i18n="tag">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">1.2.3</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable" data-i18n="tag">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">1.2.4</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
@@ -428,7 +444,8 @@
         <span class="fx-label" data-i18n="l_fill">// FILL:</span>
         <span class="fill-group">
           <button class="fill-vibrant" id="fillVibrant" type="button" data-augmented-ui="tl-clip br-clip border" title="vibrant fill — extend the nearest edge into the padding" data-i18n-title="t_fillvibrant"></button>
-          <button class="fill-swatch" id="fillSwatch" type="button" data-augmented-ui="tl-clip br-clip border" title="solid fill colour — click to pick (eyedropper)" data-i18n-title="t_fillswatch"></button>
+          <button class="fill-swatch" id="fillSwatch" type="button" data-augmented-ui="tl-clip br-clip border" title="solid fill colour — click to pick" data-i18n-title="t_fillswatch"></button>
+          <button class="fill-transparent" id="fillTransparent" type="button" data-augmented-ui="tl-clip br-clip border" title="transparent — leave the padding empty (PNG alpha)" data-i18n-title="t_filltransp"></button>
           <input type="color" id="fillColor" class="fill-input" aria-label="fill colour" />
         </span>
       </div>
@@ -471,12 +488,13 @@
       export_hint: 'Save the map as a PNG, named with its NN×MM size.',
       l_edges: '// EDGES MODE:', b_crop: 'CROP', b_expand: 'EXPAND', l_fill: '// FILL:',
       t_fillvibrant: 'vibrant fill — extend the nearest edge into the padding',
-      t_fillswatch: 'solid fill colour — click to pick (eyedropper)',
+      t_fillswatch: 'solid fill colour — click to pick',
       l_result: '// RESULT SIZE:', b_save: '⬇ SAVE PNG', saved: '✓ SAVED',
       tag: 'GRID MAP ANALYZER', tag_alt: 'DEAD CELLS',
       h_effects: '// EFFECTS', l_night: '// NIGHT MODE:', l_tint: '// TINT:', b_off: 'OFF', b_on: 'ON',
       t_nighttint: 'night tint colour — click to pick', l_potency: '// POTENCY:', h_output: '// OUTPUT', l_outsize: '// OUTPUT SIZE:',
-      b_copy: '⧉ COPY PNG', copied: '✓ COPIED', copyfail: '✗ COPY FAILED' },
+      b_copy: '⧉ COPY PNG', copied: '✓ COPIED', copyfail: '✗ COPY FAILED',
+      t_filltransp: 'transparent — leave the padding empty (PNG alpha)' },
     ru: { b_import: '⬆ ИМПОРТ', h_image: '// ИЗОБРАЖЕНИЕ', h_detect: '// ОПРЕДЕЛЕНИЕ СЕТКИ:',
       b_auto: 'АВТО', b_select: 'ВЫБОР', b_random: 'СЛУЧ. 3', b_cells: '4 ЯЧЕЙКИ',
       t_auto: 'Запускает автоматическое определение по 5 точкам.',
@@ -490,12 +508,13 @@
       export_hint: 'Сохранить карту в PNG с именем по размеру NN×MM.',
       l_edges: '// КРАЯ:', b_crop: 'ОБРЕЗ', b_expand: 'РАСШИР.', l_fill: '// ЗАЛИВКА:',
       t_fillvibrant: 'яркая заливка — продолжить ближайший край в отступ',
-      t_fillswatch: 'сплошной цвет заливки — нажмите, чтобы выбрать (пипетка)',
+      t_fillswatch: 'сплошной цвет заливки — нажмите, чтобы выбрать',
       l_result: '// РАЗМЕР:', b_save: '⬇ СОХРАНИТЬ PNG', saved: '✓ СОХРАНЕНО',
       tag: 'АНАЛИЗАТОР СЕТКИ', tag_alt: 'МЕРТВЫЕ КЛЕТКИ',
       h_effects: '// ЭФФЕКТЫ', l_night: '// НОЧНОЙ РЕЖИМ:', l_tint: '// ОТТЕНОК:', b_off: 'ВЫКЛ', b_on: 'ВКЛ',
       t_nighttint: 'цвет ночного оттенка — нажмите, чтобы выбрать', l_potency: '// СИЛА:', h_output: '// ВЫВОД', l_outsize: '// РАЗМЕР В ПИКСЕЛЯХ:',
-      b_copy: '⧉ КОПИРОВАТЬ PNG', copied: '✓ СКОПИРОВАНО', copyfail: '✗ ОШИБКА' },
+      b_copy: '⧉ КОПИРОВАТЬ PNG', copied: '✓ СКОПИРОВАНО', copyfail: '✗ ОШИБКА',
+      t_filltransp: 'прозрачный — оставить отступ пустым (альфа PNG)' },
     fr: { b_import: '⬆ IMPORTER', h_image: '// IMAGE', h_detect: '// DÉTECTION DE GRILLE :',
       b_auto: 'AUTO', b_select: 'ZONE', b_random: 'ALÉA. 3', b_cells: '4 CASES',
       t_auto: 'Lance la détection automatique en 5 points (quinconce).',
@@ -509,12 +528,13 @@
       export_hint: 'Enregistrer la carte en PNG, nommée selon sa taille NN×MM.',
       l_edges: '// BORDS :', b_crop: 'ROGNER', b_expand: 'ÉTENDRE', l_fill: '// REMPLISSAGE :',
       t_fillvibrant: 'remplissage vif — étend le bord le plus proche dans la marge',
-      t_fillswatch: 'couleur de remplissage unie — cliquez pour choisir (pipette)',
+      t_fillswatch: 'couleur de remplissage unie — cliquez pour choisir',
       l_result: '// TAILLE :', b_save: '⬇ ENREGISTRER PNG', saved: '✓ ENREGISTRÉ',
       tag: 'ANALYSEUR DE GRILLE', tag_alt: 'CASES MORTES',
       h_effects: '// EFFETS', l_night: '// MODE NUIT :', l_tint: '// TEINTE :', b_off: 'OFF', b_on: 'ON',
       t_nighttint: 'couleur de teinte nuit — cliquez pour choisir', l_potency: '// INTENSITÉ :', h_output: '// SORTIE', l_outsize: '// TAILLE EN PX :',
-      b_copy: '⧉ COPIER PNG', copied: '✓ COPIÉ', copyfail: '✗ ÉCHEC' },
+      b_copy: '⧉ COPIER PNG', copied: '✓ COPIÉ', copyfail: '✗ ÉCHEC',
+      t_filltransp: 'transparent — laisser la marge vide (alpha PNG)' },
     de: { b_import: '⬆ IMPORTIEREN', h_image: '// BILD', h_detect: '// RASTERERKENNUNG:',
       b_auto: 'AUTO', b_select: 'AUSWAHL', b_random: 'ZUFALL 3', b_cells: '4 ZELLEN',
       t_auto: 'Startet die automatische 5-Punkt-Erkennung.',
@@ -528,12 +548,13 @@
       export_hint: 'Karte als PNG speichern, benannt nach der Größe NN×MM.',
       l_edges: '// RÄNDER:', b_crop: 'KÜRZEN', b_expand: 'ERWEIT.', l_fill: '// FÜLLUNG:',
       t_fillvibrant: 'lebhafte Füllung — nächste Kante in den Rand fortsetzen',
-      t_fillswatch: 'einfarbige Füllung — klicken zum Wählen (Pipette)',
+      t_fillswatch: 'einfarbige Füllung — klicken zum Wählen',
       l_result: '// GRÖSSE:', b_save: '⬇ PNG SPEICHERN', saved: '✓ GESPEICHERT',
       tag: 'RASTER-ANALYSE', tag_alt: 'TOTE ZELLEN',
       h_effects: '// EFFEKTE', l_night: '// NACHTMODUS:', l_tint: '// TÖNUNG:', b_off: 'AUS', b_on: 'EIN',
       t_nighttint: 'Nachttönung-Farbe — klicken zum Wählen', l_potency: '// STÄRKE:', h_output: '// AUSGABE', l_outsize: '// GRÖSSE IN PX:',
-      b_copy: '⧉ PNG KOPIEREN', copied: '✓ KOPIERT', copyfail: '✗ FEHLER' },
+      b_copy: '⧉ PNG KOPIEREN', copied: '✓ KOPIERT', copyfail: '✗ FEHLER',
+      t_filltransp: 'transparent — den Rand leer lassen (PNG-Alpha)' },
     es: { b_import: '⬆ IMPORTAR', h_image: '// IMAGEN', h_detect: '// DETECCIÓN DE CUADRÍCULA:',
       b_auto: 'AUTO', b_select: 'ÁREA', b_random: 'AZAR 3', b_cells: '4 CELDAS',
       t_auto: 'Ejecuta la detección automática de 5 puntos.',
@@ -547,12 +568,13 @@
       export_hint: 'Guarda el mapa como PNG, con nombre según su tamaño NN×MM.',
       l_edges: '// BORDES:', b_crop: 'CORTAR', b_expand: 'AMPLIAR', l_fill: '// RELLENO:',
       t_fillvibrant: 'relleno vívido — extiende el borde más cercano al margen',
-      t_fillswatch: 'color de relleno sólido — clic para elegir (cuentagotas)',
+      t_fillswatch: 'color de relleno sólido — clic para elegir',
       l_result: '// TAMAÑO:', b_save: '⬇ GUARDAR PNG', saved: '✓ GUARDADO',
       tag: 'ANALIZADOR DE CUADRÍCULA', tag_alt: 'CELDAS MUERTAS',
       h_effects: '// EFECTOS', l_night: '// MODO NOCHE:', l_tint: '// TINTE:', b_off: 'OFF', b_on: 'ON',
       t_nighttint: 'color del tinte nocturno — clic para elegir', l_potency: '// INTENSIDAD:', h_output: '// SALIDA', l_outsize: '// TAMAÑO EN PX:',
-      b_copy: '⧉ COPIAR PNG', copied: '✓ COPIADO', copyfail: '✗ ERROR' },
+      b_copy: '⧉ COPIAR PNG', copied: '✓ COPIADO', copyfail: '✗ ERROR',
+      t_filltransp: 'transparente — dejar el margen vacío (alfa PNG)' },
     it: { b_import: '⬆ IMPORTA', h_image: '// IMMAGINE', h_detect: '// RILEVAMENTO GRIGLIA:',
       b_auto: 'AUTO', b_select: 'AREA', b_random: 'CASUALE 3', b_cells: '4 CELLE',
       t_auto: 'Esegue il rilevamento automatico a 5 punti.',
@@ -566,12 +588,13 @@
       export_hint: 'Salva la mappa come PNG, con nome in base alla dimensione NN×MM.',
       l_edges: '// BORDI:', b_crop: 'TAGLIA', b_expand: 'ESPANDI', l_fill: '// RIEMPIMENTO:',
       t_fillvibrant: 'riempimento vivace — estende il bordo più vicino nel margine',
-      t_fillswatch: 'colore di riempimento pieno — clicca per scegliere (contagocce)',
+      t_fillswatch: 'colore di riempimento pieno — clicca per scegliere',
       l_result: '// DIMENSIONE:', b_save: '⬇ SALVA PNG', saved: '✓ SALVATO',
       tag: 'ANALIZZATORE DI GRIGLIA', tag_alt: 'CELLE MORTE',
       h_effects: '// EFFETTI', l_night: '// MODALITÀ NOTTE:', l_tint: '// TINTA:', b_off: 'OFF', b_on: 'ON',
       t_nighttint: 'colore tinta notturna — clicca per scegliere', l_potency: '// INTENSITÀ:', h_output: '// USCITA', l_outsize: '// DIMENSIONE IN PX:',
-      b_copy: '⧉ COPIA PNG', copied: '✓ COPIATO', copyfail: '✗ ERRORE' },
+      b_copy: '⧉ COPIA PNG', copied: '✓ COPIATO', copyfail: '✗ ERRORE',
+      t_filltransp: 'trasparente — lasciare il bordo vuoto (alfa PNG)' },
     ja: { b_import: '⬆ 画像を読み込む', h_image: '// 画像', h_detect: '// グリッド検出:',
       b_auto: '自動', b_select: '範囲選択', b_random: 'ランダム3', b_cells: '4セル',
       t_auto: '自動5点検出を実行します。',
@@ -585,12 +608,13 @@
       export_hint: '地図を PNG で保存します（ファイル名は NN×MM サイズ）。',
       l_edges: '// 端の処理:', b_crop: '切り取り', b_expand: '拡張', l_fill: '// 塗りつぶし:',
       t_fillvibrant: '鮮やかな塗り — 最も近い端を余白へ延長',
-      t_fillswatch: '単色の塗り — クリックで選択（スポイト）',
+      t_fillswatch: '単色の塗り — クリックで選択',
       l_result: '// 結果サイズ:', b_save: '⬇ PNGを保存', saved: '✓ 保存しました',
       tag: 'グリッド解析', tag_alt: '死んだセル',
       h_effects: '// エフェクト', l_night: '// ナイトモード:', l_tint: '// 色調:', b_off: 'オフ', b_on: 'オン',
       t_nighttint: 'ナイト色 — クリックで選択', l_potency: '// 強さ:', h_output: '// 出力', l_outsize: '// 出力サイズ:',
-      b_copy: '⧉ PNGをコピー', copied: '✓ コピーしました', copyfail: '✗ 失敗' },
+      b_copy: '⧉ PNGをコピー', copied: '✓ コピーしました', copyfail: '✗ 失敗',
+      t_filltransp: '透明 — 余白を空ける（PNGのアルファ）' },
     zh: { b_import: '⬆ 导入图像', h_image: '// 图像', h_detect: '// 网格检测：',
       b_auto: '自动', b_select: '选择区域', b_random: '随机3', b_cells: '4格',
       t_auto: '运行自动五点检测。',
@@ -604,12 +628,13 @@
       export_hint: '将地图保存为 PNG，文件名包含其 NN×MM 尺寸。',
       l_edges: '// 边缘模式：', b_crop: '裁剪', b_expand: '扩展', l_fill: '// 填充：',
       t_fillvibrant: '鲜明填充 — 将最近的边缘延伸到留白处',
-      t_fillswatch: '纯色填充 — 点击拾取（吸管）',
+      t_fillswatch: '纯色填充 — 点击拾取',
       l_result: '// 结果尺寸：', b_save: '⬇ 保存 PNG', saved: '✓ 已保存',
       tag: '网格地图分析器', tag_alt: '死亡格子',
       h_effects: '// 效果', l_night: '// 夜间模式：', l_tint: '// 色调：', b_off: '关', b_on: '开',
       t_nighttint: '夜间色调 — 点击选择', l_potency: '// 强度：', h_output: '// 输出', l_outsize: '// 输出尺寸：',
-      b_copy: '⧉ 复制 PNG', copied: '✓ 已复制', copyfail: '✗ 失败' },
+      b_copy: '⧉ 复制 PNG', copied: '✓ 已复制', copyfail: '✗ 失败',
+      t_filltransp: '透明 — 留白保持透明（PNG 透明通道）' },
   };
   let curLang = 'en';
   const t = (key) => ((I18N[curLang] || I18N.en)[key]) || I18N.en[key] || '';
@@ -694,7 +719,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v1.2.3';
+    const VER = ' // v1.2.4';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 
@@ -1069,7 +1094,7 @@
     // ---- Export settings: edge-fix toggles + fill colour (all persisted) ----
     const modeToggle = $('modeToggle'),
       fillRow = $('fillRow'), fillSwatch = $('fillSwatch'), fillVibrant = $('fillVibrant'),
-      fillColor = $('fillColor');
+      fillTransparent = $('fillTransparent'), fillColor = $('fillColor');
     const nightToggle = $('nightToggle'), nightColorRow = $('nightColorRow'), nightSwatch = $('nightSwatch'), nightInput = $('nightInput'),
       potencyRow = $('potencyRow'), nightPotencySlider = $('nightPotency');
     const autoBtn = $('autoBtn'), selectBtn = $('selectBtn'), randomBtn = $('randomBtn'), cellBtn = $('cellBtn'),
@@ -1090,7 +1115,7 @@
     let cellMode = false;   // "4 cells" sub-mode of selecting: one box → cell-size-seeded detection
     try {
       if (localStorage.getItem('gridmap:edgeMode') === 'expand') edgeMode = 'expand';
-      if (localStorage.getItem('gridmap:fillMode') === 'solid') fillMode = 'solid';
+      const fm = localStorage.getItem('gridmap:fillMode'); if (fm === 'solid' || fm === 'transparent') fillMode = fm;
       fillOverride = toHex(localStorage.getItem('gridmap:fillColor') || '');
       const z = parseInt(localStorage.getItem('gridmap:zoom'), 10);
       if (Number.isFinite(z)) zoom = Math.min(300, Math.max(10, z));
@@ -1156,18 +1181,18 @@
     function syncFillMode() {
       if (fillSwatch) fillSwatch.classList.toggle('active', fillMode === 'solid');
       if (fillVibrant) fillVibrant.classList.toggle('active', fillMode === 'vibrant');
+      if (fillTransparent) fillTransparent.classList.toggle('active', fillMode === 'transparent');
     }
     if (fillVibrant) fillVibrant.addEventListener('click', () => {
       fillMode = 'vibrant'; save('gridmap:fillMode', 'vibrant'); syncFillMode(); renderDisplay();
     });
-    // The swatch selects SOLID mode and opens the eyedropper (sample any
-    // on-screen pixel, incl. the map). Falls back to the native colour input.
-    if (fillSwatch) fillSwatch.addEventListener('click', async () => {
+    if (fillTransparent) fillTransparent.addEventListener('click', () => {
+      fillMode = 'transparent'; save('gridmap:fillMode', 'transparent'); syncFillMode(); renderDisplay();
+    });
+    // The swatch selects SOLID mode and opens the native colour-picker palette
+    // (which also offers an eyedropper button on most browsers).
+    if (fillSwatch) fillSwatch.addEventListener('click', () => {
       fillMode = 'solid'; save('gridmap:fillMode', 'solid'); syncFillMode(); renderDisplay();
-      if (window.EyeDropper) {
-        try { const r = await new EyeDropper().open(); setFill(r.sRGBHex); } catch (e) { /* cancelled */ }
-        return;
-      }
       try { if (fillColor && fillColor.showPicker) { fillColor.showPicker(); return; } } catch (e) {}
       if (fillColor) fillColor.click();
     });
@@ -1382,7 +1407,7 @@
         const sx = Math.max(0, wx), sy = Math.max(0, wy);
         const ex = Math.min(nW, wx + L.win.w), ey = Math.min(nH, wy + L.win.h);
         if (ex <= sx || ey <= sy) {           // window entirely off the image
-          ctx.fillStyle = toHex(fillValue()) || '#808080'; ctx.fillRect(0, 0, w, h);
+          if (fillMode !== 'transparent') { ctx.fillStyle = toHex(fillValue()) || '#808080'; ctx.fillRect(0, 0, w, h); }
           tintCanvas(ctx, 0, 0, w, h);
           return { w, h };
         }
@@ -1402,7 +1427,7 @@
           if (padL > 0 && padB > 0) ctx.drawImage(image, sx, ey - 1, 1, 1, -m, padT + oh, padL + m, padB + m);             // BL
           if (padR > 0 && padB > 0) ctx.drawImage(image, ex - 1, ey - 1, 1, 1, padL + ow, padT + oh, padR + m, padB + m);  // BR
           ctx.filter = 'none';
-        } else {
+        } else if (fillMode !== 'transparent') {
           ctx.fillStyle = toHex(fillValue()) || '#808080'; ctx.fillRect(0, 0, w, h);
         }
         ctx.drawImage(image, sx, sy, ex - sx, ey - sy, padL, padT, ow, oh);   // image overlap on top
@@ -1428,7 +1453,7 @@
           if (dx > 0 && bp > 0) ctx.drawImage(image, 0, nH - 1, 1, 1, -m, dy + ih, dx + m, bp + m);             // BL
           if (rp > 0 && bp > 0) ctx.drawImage(image, nW - 1, nH - 1, 1, 1, dx + iw, dy + ih, rp + m, bp + m);   // BR
           ctx.filter = 'none';
-        } else if (L.fill) {
+        } else if (fillMode !== 'transparent' && L.fill) {
           ctx.fillStyle = L.fill; ctx.fillRect(0, 0, w, h);
         }
         ctx.drawImage(image, 0, 0, nW, nH, dx, dy, iw, ih);
@@ -1517,6 +1542,8 @@
       if (calcSize) calcSize.classList.toggle('estimated', est);
       // the exported PNG's pixel dimensions (paint() runs at scale 1 → outW×outH)
       if (outVal) outVal.textContent = Math.round(outW) + '×' + Math.round(outH) + ' PX';
+      // checkerboard behind transparent padding — only where padding exists (expand / manual)
+      zone.classList.toggle('transp', fillMode === 'transparent' && (manual || edgeMode === 'expand'));
       applyZoom();           // re-fit the on-screen map to the current zoom
     }
 
@@ -1550,6 +1577,7 @@
         const off = document.createElement('canvas');
         paint(off, L, scale);
         const wX = Math.round((wx - ux0) * scale), wY = Math.round((wy - uy0) * scale);
+        if (fillMode === 'transparent') ctx.clearRect(wX, wY, off.width, off.height);   // reveal the checkerboard through transparent padding
         ctx.drawImage(off, wX, wY);
         const cellW = L.win.w / (winC1 - winC0), cellH = L.win.h / (winR1 - winR0);
         trimRect = { x: wX, y: wY, w: off.width, h: off.height }; showDelim = true;   // delimiter drawn on the overlay

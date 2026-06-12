@@ -1,4 +1,4 @@
-<!-- GRIDMAP v1.2.1 -->
+<!-- GRIDMAP v1.2.2 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -321,6 +321,12 @@
     .config { width: 100%; }
     .workspace { order: -1; width: 100%; }
   }
+  /* faint fixed footer stamp (ported from chronos/commlink) */
+  .footer-stamp {
+    position: fixed; left: 0; right: 0; bottom: 6px; z-index: 0;
+    text-align: center; font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.15); pointer-events: none; user-select: none;
+  }
 </style>
 </head>
 <body>
@@ -336,7 +342,7 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable" data-i18n="tag">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">1.2.1</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable" data-i18n="tag">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">1.2.2</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
@@ -439,6 +445,8 @@
     </aside>
   </div>
 </div>
+
+<div class="footer-stamp" aria-hidden="true">GRIDMAP_GRID_DETECTOR (c) // 2026 // CYBERDELAAI // MIT</div>
 
 <script>
 (function () {
@@ -676,7 +684,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v1.2.1';
+    const VER = ' // v1.2.2';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 

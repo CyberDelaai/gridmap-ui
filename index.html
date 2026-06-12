@@ -1,4 +1,4 @@
-<!-- GRIDMAP v1.1.3 -->
+<!-- GRIDMAP v1.2.0 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -220,6 +220,25 @@
   .fill-swatch.active, .fill-vibrant.active { --aug-border-bg: var(--main); }
   /* the real colour input is off-screen; the swatch opens it via showPicker() */
   .fill-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  /* faded-edge cyan horizontal divider between config sections */
+  .divider {
+    border: none; height: 1px; margin: 18px 0;
+    background: linear-gradient(90deg, transparent, rgba(var(--main-rgb),0.55), transparent);
+  }
+  /* // POTENCY range slider — cyan thumb on a dim track (matches the toggle footprint) */
+  .potency-slider {
+    -webkit-appearance: none; appearance: none; width: 112px; height: 4px;
+    background: rgba(var(--main-rgb),0.25); cursor: pointer; outline: none; flex-shrink: 0;
+  }
+  .potency-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; width: 12px; height: 16px;
+    background: var(--main); border: none; cursor: pointer;
+  }
+  .potency-slider::-moz-range-thumb {
+    width: 12px; height: 16px; background: var(--main); border: none; border-radius: 0; cursor: pointer;
+  }
+  .potency-slider:hover::-webkit-slider-thumb { box-shadow: 0 0 8px rgba(var(--main-rgb),0.7); }
+  .potency-slider:hover::-moz-range-thumb { box-shadow: 0 0 8px rgba(var(--main-rgb),0.7); }
   .workspace { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
   /* // GRID panel: the labelled AUTO|MANUAL toggle */
   .topbar { display: flex; flex-direction: column; gap: 14px; margin-bottom: 14px; padding-top: 4px; }
@@ -314,7 +333,7 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable" data-i18n="tag">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">1.1.3</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable" data-i18n="tag">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">1.2.0</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
@@ -369,8 +388,26 @@
 
     <!-- RIGHT config (export — TODO) -->
     <aside class="config config-right" data-augmented-ui="tl-clip br-clip border">
-      <h2 data-i18n="h_export">// EXPORT</h2>
-      <p class="hint" data-i18n="export_hint">Save the map as a PNG, named with its NN×MM size.</p>
+      <h2 data-i18n="h_effects">// EFFECTS</h2>
+      <div class="fx-toggle" id="nightRow">
+        <span class="fx-label" data-i18n="l_night">// NIGHT MODE:</span>
+        <button class="side-switch" id="nightToggle" type="button" data-pos="left" aria-label="night-mode tint">
+          <span class="thumb"></span><span class="lab l" data-i18n="b_off">OFF</span><span class="lab r" data-i18n="b_on">ON</span>
+        </button>
+      </div>
+      <div class="fx-toggle" id="nightColorRow">
+        <span class="fx-label" data-i18n="l_tint">// TINT:</span>
+        <span class="fill-group">
+          <button class="fill-swatch" id="nightSwatch" type="button" data-augmented-ui="tl-clip br-clip border" title="night tint colour — click to pick" data-i18n-title="t_nighttint"></button>
+          <input type="color" id="nightInput" class="fill-input" aria-label="night tint colour" />
+        </span>
+      </div>
+      <div class="fx-toggle" id="potencyRow">
+        <span class="fx-label" data-i18n="l_potency">// POTENCY:</span>
+        <input type="range" id="nightPotency" class="potency-slider" min="0" max="100" value="70" aria-label="tint potency" />
+      </div>
+      <hr class="divider" />
+      <h2 data-i18n="h_output">// OUTPUT</h2>
       <div class="fx-toggle" id="modeRow">
         <span class="fx-label" data-i18n="l_edges">// EDGES MODE:</span>
         <button class="side-switch" id="modeToggle" type="button" data-pos="left" aria-label="partial cell handling">
@@ -385,6 +422,9 @@
           <input type="color" id="fillColor" class="fill-input" aria-label="fill colour" />
         </span>
       </div>
+      <hr class="divider" />
+      <h2 data-i18n="h_export">// EXPORT</h2>
+      <p class="hint" data-i18n="export_hint">Save the map as a PNG, named with its NN×MM size.</p>
       <div class="calc-size" id="calcSize"><span data-i18n="l_result">// RESULT SIZE:</span> <span class="calc-val" id="calcVal">??×??</span></div>
       <button class="btn export-btn" data-augmented-ui="tl-clip br-clip both" id="exportBtn" type="button" disabled data-i18n="b_save">⬇ SAVE PNG</button>
     </aside>
@@ -414,7 +454,9 @@
       t_fillvibrant: 'vibrant fill — extend the nearest edge into the padding',
       t_fillswatch: 'solid fill colour — click to pick (eyedropper)',
       l_result: '// RESULT SIZE:', b_save: '⬇ SAVE PNG', saved: '✓ SAVED',
-      tag: 'GRID MAP ANALYZER', tag_alt: 'DEAD CELLS' },
+      tag: 'GRID MAP ANALYZER', tag_alt: 'DEAD CELLS',
+      h_effects: '// EFFECTS', l_night: '// NIGHT MODE:', l_tint: '// TINT:', b_off: 'OFF', b_on: 'ON',
+      t_nighttint: 'night tint colour — click to pick', l_potency: '// POTENCY:', h_output: '// OUTPUT' },
     ru: { b_import: '⬆ ИМПОРТ', h_image: '// ИЗОБРАЖЕНИЕ', h_detect: '// ОПРЕДЕЛЕНИЕ СЕТКИ:',
       b_auto: 'АВТО', b_select: 'ВЫБОР', b_random: 'СЛУЧ. 3', b_cells: '4 ЯЧЕЙКИ',
       t_auto: 'Запускает автоматическое определение по 5 точкам.',
@@ -430,7 +472,9 @@
       t_fillvibrant: 'яркая заливка — продолжить ближайший край в отступ',
       t_fillswatch: 'сплошной цвет заливки — нажмите, чтобы выбрать (пипетка)',
       l_result: '// РАЗМЕР:', b_save: '⬇ СОХРАНИТЬ PNG', saved: '✓ СОХРАНЕНО',
-      tag: 'АНАЛИЗАТОР СЕТКИ', tag_alt: 'МЕРТВЫЕ КЛЕТКИ' },
+      tag: 'АНАЛИЗАТОР СЕТКИ', tag_alt: 'МЕРТВЫЕ КЛЕТКИ',
+      h_effects: '// ЭФФЕКТЫ', l_night: '// НОЧНОЙ РЕЖИМ:', l_tint: '// ОТТЕНОК:', b_off: 'ВЫКЛ', b_on: 'ВКЛ',
+      t_nighttint: 'цвет ночного оттенка — нажмите, чтобы выбрать', l_potency: '// СИЛА:', h_output: '// ВЫВОД' },
     fr: { b_import: '⬆ IMPORTER', h_image: '// IMAGE', h_detect: '// DÉTECTION DE GRILLE :',
       b_auto: 'AUTO', b_select: 'ZONE', b_random: 'ALÉA. 3', b_cells: '4 CASES',
       t_auto: 'Lance la détection automatique en 5 points (quinconce).',
@@ -446,7 +490,9 @@
       t_fillvibrant: 'remplissage vif — étend le bord le plus proche dans la marge',
       t_fillswatch: 'couleur de remplissage unie — cliquez pour choisir (pipette)',
       l_result: '// TAILLE :', b_save: '⬇ ENREGISTRER PNG', saved: '✓ ENREGISTRÉ',
-      tag: 'ANALYSEUR DE GRILLE', tag_alt: 'CASES MORTES' },
+      tag: 'ANALYSEUR DE GRILLE', tag_alt: 'CASES MORTES',
+      h_effects: '// EFFETS', l_night: '// MODE NUIT :', l_tint: '// TEINTE :', b_off: 'OFF', b_on: 'ON',
+      t_nighttint: 'couleur de teinte nuit — cliquez pour choisir', l_potency: '// INTENSITÉ :', h_output: '// SORTIE' },
     de: { b_import: '⬆ IMPORTIEREN', h_image: '// BILD', h_detect: '// RASTERERKENNUNG:',
       b_auto: 'AUTO', b_select: 'AUSWAHL', b_random: 'ZUFALL 3', b_cells: '4 ZELLEN',
       t_auto: 'Startet die automatische 5-Punkt-Erkennung.',
@@ -462,7 +508,9 @@
       t_fillvibrant: 'lebhafte Füllung — nächste Kante in den Rand fortsetzen',
       t_fillswatch: 'einfarbige Füllung — klicken zum Wählen (Pipette)',
       l_result: '// GRÖSSE:', b_save: '⬇ PNG SPEICHERN', saved: '✓ GESPEICHERT',
-      tag: 'RASTER-ANALYSE', tag_alt: 'TOTE ZELLEN' },
+      tag: 'RASTER-ANALYSE', tag_alt: 'TOTE ZELLEN',
+      h_effects: '// EFFEKTE', l_night: '// NACHTMODUS:', l_tint: '// TÖNUNG:', b_off: 'AUS', b_on: 'EIN',
+      t_nighttint: 'Nachttönung-Farbe — klicken zum Wählen', l_potency: '// STÄRKE:', h_output: '// AUSGABE' },
     es: { b_import: '⬆ IMPORTAR', h_image: '// IMAGEN', h_detect: '// DETECCIÓN DE CUADRÍCULA:',
       b_auto: 'AUTO', b_select: 'ÁREA', b_random: 'AZAR 3', b_cells: '4 CELDAS',
       t_auto: 'Ejecuta la detección automática de 5 puntos.',
@@ -478,7 +526,9 @@
       t_fillvibrant: 'relleno vívido — extiende el borde más cercano al margen',
       t_fillswatch: 'color de relleno sólido — clic para elegir (cuentagotas)',
       l_result: '// TAMAÑO:', b_save: '⬇ GUARDAR PNG', saved: '✓ GUARDADO',
-      tag: 'ANALIZADOR DE CUADRÍCULA', tag_alt: 'CELDAS MUERTAS' },
+      tag: 'ANALIZADOR DE CUADRÍCULA', tag_alt: 'CELDAS MUERTAS',
+      h_effects: '// EFECTOS', l_night: '// MODO NOCHE:', l_tint: '// TINTE:', b_off: 'OFF', b_on: 'ON',
+      t_nighttint: 'color del tinte nocturno — clic para elegir', l_potency: '// INTENSIDAD:', h_output: '// SALIDA' },
     it: { b_import: '⬆ IMPORTA', h_image: '// IMMAGINE', h_detect: '// RILEVAMENTO GRIGLIA:',
       b_auto: 'AUTO', b_select: 'AREA', b_random: 'CASUALE 3', b_cells: '4 CELLE',
       t_auto: 'Esegue il rilevamento automatico a 5 punti.',
@@ -494,7 +544,9 @@
       t_fillvibrant: 'riempimento vivace — estende il bordo più vicino nel margine',
       t_fillswatch: 'colore di riempimento pieno — clicca per scegliere (contagocce)',
       l_result: '// DIMENSIONE:', b_save: '⬇ SALVA PNG', saved: '✓ SALVATO',
-      tag: 'ANALIZZATORE DI GRIGLIA', tag_alt: 'CELLE MORTE' },
+      tag: 'ANALIZZATORE DI GRIGLIA', tag_alt: 'CELLE MORTE',
+      h_effects: '// EFFETTI', l_night: '// MODALITÀ NOTTE:', l_tint: '// TINTA:', b_off: 'OFF', b_on: 'ON',
+      t_nighttint: 'colore tinta notturna — clicca per scegliere', l_potency: '// INTENSITÀ:', h_output: '// USCITA' },
     ja: { b_import: '⬆ 画像を読み込む', h_image: '// 画像', h_detect: '// グリッド検出:',
       b_auto: '自動', b_select: '範囲選択', b_random: 'ランダム3', b_cells: '4セル',
       t_auto: '自動5点検出を実行します。',
@@ -510,7 +562,9 @@
       t_fillvibrant: '鮮やかな塗り — 最も近い端を余白へ延長',
       t_fillswatch: '単色の塗り — クリックで選択（スポイト）',
       l_result: '// 結果サイズ:', b_save: '⬇ PNGを保存', saved: '✓ 保存しました',
-      tag: 'グリッド解析', tag_alt: '死んだセル' },
+      tag: 'グリッド解析', tag_alt: '死んだセル',
+      h_effects: '// エフェクト', l_night: '// ナイトモード:', l_tint: '// 色調:', b_off: 'オフ', b_on: 'オン',
+      t_nighttint: 'ナイト色 — クリックで選択', l_potency: '// 強さ:', h_output: '// 出力' },
     zh: { b_import: '⬆ 导入图像', h_image: '// 图像', h_detect: '// 网格检测：',
       b_auto: '自动', b_select: '选择区域', b_random: '随机3', b_cells: '4格',
       t_auto: '运行自动五点检测。',
@@ -526,7 +580,9 @@
       t_fillvibrant: '鲜明填充 — 将最近的边缘延伸到留白处',
       t_fillswatch: '纯色填充 — 点击拾取（吸管）',
       l_result: '// 结果尺寸：', b_save: '⬇ 保存 PNG', saved: '✓ 已保存',
-      tag: '网格地图分析器', tag_alt: '死亡格子' },
+      tag: '网格地图分析器', tag_alt: '死亡格子',
+      h_effects: '// 效果', l_night: '// 夜间模式：', l_tint: '// 色调：', b_off: '关', b_on: '开',
+      t_nighttint: '夜间色调 — 点击选择', l_potency: '// 强度：', h_output: '// 输出' },
   };
   let curLang = 'en';
   const t = (key) => ((I18N[curLang] || I18N.en)[key]) || I18N.en[key] || '';
@@ -611,7 +667,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v1.1.3';
+    const VER = ' // v1.2.0';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 
@@ -986,10 +1042,13 @@
     const modeToggle = $('modeToggle'),
       fillRow = $('fillRow'), fillSwatch = $('fillSwatch'), fillVibrant = $('fillVibrant'),
       fillColor = $('fillColor');
+    const nightToggle = $('nightToggle'), nightColorRow = $('nightColorRow'), nightSwatch = $('nightSwatch'), nightInput = $('nightInput'),
+      potencyRow = $('potencyRow'), nightPotencySlider = $('nightPotency');
     const autoBtn = $('autoBtn'), selectBtn = $('selectBtn'), randomBtn = $('randomBtn'), cellBtn = $('cellBtn'),
       colVal = $('colVal'), rowVal = $('rowVal'), calcSize = $('calcSize'), calcVal = $('calcVal');
     const fixEdges = true;   // edge-fixing is always on (toggle removed)
     let edgeMode = 'crop', fillOverride = '', fillMode = 'vibrant';
+    let nightMode = false, nightColor = '#1c2c5e', nightPotency = 0.7;   // EFFECTS → NIGHT MODE tint (dark blue, 0..1 strength), baked into preview + export
     let manual = false, winC0 = 0, winR0 = 0, winC1 = 0, winR1 = 0;   // MANUAL window, in grid-cell indices
     let gCols = 0, gRows = 0;   // current grid cell counts (NN×MM); ×2 //2 ×3 //3 rescale these
     let offX = 0, offY = 0;     // grid-origin nudge from the top-left (image px, sub-cell)
@@ -1007,6 +1066,10 @@
       fillOverride = toHex(localStorage.getItem('gridmap:fillColor') || '');
       const z = parseInt(localStorage.getItem('gridmap:zoom'), 10);
       if (Number.isFinite(z)) zoom = Math.min(300, Math.max(10, z));
+      nightMode = localStorage.getItem('gridmap:nightMode') === '1';
+      const nc = toHex(localStorage.getItem('gridmap:nightColor') || ''); if (nc) nightColor = nc;
+      const npp = parseInt(localStorage.getItem('gridmap:nightPotency'), 10);
+      if (Number.isFinite(npp)) nightPotency = Math.min(1, Math.max(0, npp / 100));
     } catch (e) { /* storage blocked */ }
     const save = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 
@@ -1081,6 +1144,35 @@
       if (fillColor) fillColor.click();
     });
     ['input', 'change'].forEach((ev) => fillColor && fillColor.addEventListener(ev, () => setFill(fillColor.value)));
+
+    // ---- EFFECTS → NIGHT MODE: a colour tint (multiply) baked into the preview
+    // AND the exported PNG. Toggle on/off; the TINT swatch picks the colour. ----
+    function refreshNight() {
+      if (nightSwatch) nightSwatch.style.background = nightColor;
+      if (nightInput) nightInput.value = nightColor;
+      if (nightPotencySlider) nightPotencySlider.value = Math.round(nightPotency * 100);
+    }
+    function syncEffects() {
+      if (nightToggle) nightToggle.dataset.pos = nightMode ? 'right' : 'left';
+      if (nightColorRow) nightColorRow.classList.toggle('disabled', !nightMode);
+      if (potencyRow) potencyRow.classList.toggle('disabled', !nightMode);
+    }
+    function setNightColor(color) {
+      const hex = toHex(color); if (!hex) return;
+      nightColor = hex; save('gridmap:nightColor', hex); refreshNight(); renderDisplay();
+    }
+    if (nightToggle) nightToggle.addEventListener('click', () => {
+      nightMode = !nightMode; save('gridmap:nightMode', nightMode ? '1' : '0'); syncEffects(); renderDisplay();
+    });
+    if (nightSwatch) nightSwatch.addEventListener('click', () => {
+      try { if (nightInput && nightInput.showPicker) { nightInput.showPicker(); return; } } catch (e) {}
+      if (nightInput) nightInput.click();
+    });
+    ['input', 'change'].forEach((ev) => nightInput && nightInput.addEventListener(ev, () => setNightColor(nightInput.value)));
+    if (nightPotencySlider) nightPotencySlider.addEventListener('input', () => {
+      nightPotency = Math.min(1, Math.max(0, (parseInt(nightPotencySlider.value, 10) || 0) / 100));
+      save('gridmap:nightPotency', Math.round(nightPotency * 100)); renderDisplay();
+    });
 
     // ---- AUTO | MANUAL grid mode ----
     // AUTO = the detected grid, with crop/expand handling edge cells. MANUAL =
@@ -1193,6 +1285,8 @@
     refreshFill();
     syncFillMode();
     syncAutoMode();
+    refreshNight();
+    syncEffects();
 
     // ---- Result layout: how the edge-fix reshapes the map. Shared by the
     // on-canvas preview AND the PNG export so they always match. Returns
@@ -1237,6 +1331,16 @@
     }
 
     // Paint a layout onto a canvas at the given scale (out → target px).
+    // EFFECTS → NIGHT MODE: multiply the chosen tint over a region (no-op when off).
+    function tintCanvas(ctx, x, y, w, h) {
+      if (!nightMode || nightPotency <= 0) return;
+      ctx.save();
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.globalAlpha = nightPotency;   // // POTENCY: blend the multiply between none (0) and full (1)
+      ctx.fillStyle = nightColor;
+      ctx.fillRect(x, y, w, h);
+      ctx.restore();
+    }
     function paint(canvas, L, scale) {
       const image = loaded.image, nW = image.naturalWidth, nH = image.naturalHeight;
       const w = Math.max(1, Math.round(L.outW * scale)), h = Math.max(1, Math.round(L.outH * scale));
@@ -1251,6 +1355,7 @@
         const ex = Math.min(nW, wx + L.win.w), ey = Math.min(nH, wy + L.win.h);
         if (ex <= sx || ey <= sy) {           // window entirely off the image
           ctx.fillStyle = toHex(fillValue()) || '#808080'; ctx.fillRect(0, 0, w, h);
+          tintCanvas(ctx, 0, 0, w, h);
           return { w, h };
         }
         const padL = Math.round((sx - wx) * scale), padT = Math.round((sy - wy) * scale);
@@ -1273,6 +1378,7 @@
           ctx.fillStyle = toHex(fillValue()) || '#808080'; ctx.fillRect(0, 0, w, h);
         }
         ctx.drawImage(image, sx, sy, ex - sx, ey - sy, padL, padT, ow, oh);   // image overlap on top
+        tintCanvas(ctx, 0, 0, w, h);
         return { w, h };
       }
       if (L.expand) {
@@ -1298,10 +1404,12 @@
           ctx.fillStyle = L.fill; ctx.fillRect(0, 0, w, h);
         }
         ctx.drawImage(image, 0, 0, nW, nH, dx, dy, iw, ih);
+        tintCanvas(ctx, 0, 0, w, h);
         return { w, h };
       }
       if (L.src) ctx.drawImage(image, L.src.x, L.src.y, L.src.w, L.src.h, 0, 0, w, h);
       else ctx.drawImage(image, 0, 0, nW, nH, Math.round(L.dx * scale), Math.round(L.dy * scale), Math.round(nW * scale), Math.round(nH * scale));
+      tintCanvas(ctx, 0, 0, w, h);
       return { w, h };
     }
 
@@ -1434,6 +1542,7 @@
         ctx.fillRect(0, ky + kh, dW, dH - (ky + kh));
         ctx.fillRect(0, ky, kx, kh);
         ctx.fillRect(kx + kw, ky, dW - (kx + kw), kh);
+        tintCanvas(ctx, kx, ky, kw, kh);   // night tint on the kept region (matches the export)
         trimRect = { x: kx, y: ky, w: kw, h: kh }; trimGeom = null; showDelim = true;   // delimiter drawn on the overlay
         const v = view();
         drawGrid(v.vFrac, v.vOff, v.hFrac, v.hOff, dW, dH);
@@ -1464,7 +1573,8 @@
         if (!blob) return;
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = 'gridmap_' + Math.floor(Date.now() / 1000) + '_' + out.cols + 'x' + out.rows + '.png';
+        const tinted = (nightMode && nightPotency > 0) ? '_tinted' : '';
+        a.download = 'gridmap_' + Math.floor(Date.now() / 1000) + '_' + out.cols + 'x' + out.rows + tinted + '.png';
         a.click();
         setTimeout(() => URL.revokeObjectURL(a.href), 2000);
         const prev = exportBtn.textContent;

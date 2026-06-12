@@ -1,4 +1,4 @@
-<!-- GRIDMAP v1.2.2 -->
+<!-- GRIDMAP v1.2.3 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -178,6 +178,7 @@
   .btn:hover { background: color-mix(in srgb, var(--btn-color) 22%, transparent); box-shadow: 0 0 12px color-mix(in srgb, var(--btn-color) 45%, transparent); }
   .btn:disabled { opacity: .4; cursor: not-allowed; background: transparent; box-shadow: none; }
   .config .export-btn { width: 100%; margin-top: 16px; }
+  .config .copy-btn { --btn-color: var(--main); width: 100%; margin-top: 8px; }
   .config .import-btn { --btn-color: var(--main); width: 100%; margin-top: 4px; margin-bottom: 12px;}
   /* Sliding two-state toggle — ported from chronos/commlink .side-switch */
   .fx-toggle { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; }
@@ -342,7 +343,7 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable" data-i18n="tag">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">1.2.2</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable" data-i18n="tag">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">1.2.3</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
@@ -442,6 +443,7 @@
         </span>
       </div>
       <button class="btn export-btn" data-augmented-ui="tl-clip br-clip both" id="exportBtn" type="button" disabled data-i18n="b_save">⬇ SAVE PNG</button>
+      <button class="btn copy-btn" data-augmented-ui="tl-clip br-clip both" id="copyBtn" type="button" disabled data-i18n="b_copy">⧉ COPY PNG</button>
     </aside>
   </div>
 </div>
@@ -473,7 +475,8 @@
       l_result: '// RESULT SIZE:', b_save: '⬇ SAVE PNG', saved: '✓ SAVED',
       tag: 'GRID MAP ANALYZER', tag_alt: 'DEAD CELLS',
       h_effects: '// EFFECTS', l_night: '// NIGHT MODE:', l_tint: '// TINT:', b_off: 'OFF', b_on: 'ON',
-      t_nighttint: 'night tint colour — click to pick', l_potency: '// POTENCY:', h_output: '// OUTPUT', l_outsize: '// OUTPUT SIZE:' },
+      t_nighttint: 'night tint colour — click to pick', l_potency: '// POTENCY:', h_output: '// OUTPUT', l_outsize: '// OUTPUT SIZE:',
+      b_copy: '⧉ COPY PNG', copied: '✓ COPIED', copyfail: '✗ COPY FAILED' },
     ru: { b_import: '⬆ ИМПОРТ', h_image: '// ИЗОБРАЖЕНИЕ', h_detect: '// ОПРЕДЕЛЕНИЕ СЕТКИ:',
       b_auto: 'АВТО', b_select: 'ВЫБОР', b_random: 'СЛУЧ. 3', b_cells: '4 ЯЧЕЙКИ',
       t_auto: 'Запускает автоматическое определение по 5 точкам.',
@@ -491,7 +494,8 @@
       l_result: '// РАЗМЕР:', b_save: '⬇ СОХРАНИТЬ PNG', saved: '✓ СОХРАНЕНО',
       tag: 'АНАЛИЗАТОР СЕТКИ', tag_alt: 'МЕРТВЫЕ КЛЕТКИ',
       h_effects: '// ЭФФЕКТЫ', l_night: '// НОЧНОЙ РЕЖИМ:', l_tint: '// ОТТЕНОК:', b_off: 'ВЫКЛ', b_on: 'ВКЛ',
-      t_nighttint: 'цвет ночного оттенка — нажмите, чтобы выбрать', l_potency: '// СИЛА:', h_output: '// ВЫВОД', l_outsize: '// РАЗМЕР В ПИКСЕЛЯХ:' },
+      t_nighttint: 'цвет ночного оттенка — нажмите, чтобы выбрать', l_potency: '// СИЛА:', h_output: '// ВЫВОД', l_outsize: '// РАЗМЕР В ПИКСЕЛЯХ:',
+      b_copy: '⧉ КОПИРОВАТЬ PNG', copied: '✓ СКОПИРОВАНО', copyfail: '✗ ОШИБКА' },
     fr: { b_import: '⬆ IMPORTER', h_image: '// IMAGE', h_detect: '// DÉTECTION DE GRILLE :',
       b_auto: 'AUTO', b_select: 'ZONE', b_random: 'ALÉA. 3', b_cells: '4 CASES',
       t_auto: 'Lance la détection automatique en 5 points (quinconce).',
@@ -509,7 +513,8 @@
       l_result: '// TAILLE :', b_save: '⬇ ENREGISTRER PNG', saved: '✓ ENREGISTRÉ',
       tag: 'ANALYSEUR DE GRILLE', tag_alt: 'CASES MORTES',
       h_effects: '// EFFETS', l_night: '// MODE NUIT :', l_tint: '// TEINTE :', b_off: 'OFF', b_on: 'ON',
-      t_nighttint: 'couleur de teinte nuit — cliquez pour choisir', l_potency: '// INTENSITÉ :', h_output: '// SORTIE', l_outsize: '// TAILLE EN PX :' },
+      t_nighttint: 'couleur de teinte nuit — cliquez pour choisir', l_potency: '// INTENSITÉ :', h_output: '// SORTIE', l_outsize: '// TAILLE EN PX :',
+      b_copy: '⧉ COPIER PNG', copied: '✓ COPIÉ', copyfail: '✗ ÉCHEC' },
     de: { b_import: '⬆ IMPORTIEREN', h_image: '// BILD', h_detect: '// RASTERERKENNUNG:',
       b_auto: 'AUTO', b_select: 'AUSWAHL', b_random: 'ZUFALL 3', b_cells: '4 ZELLEN',
       t_auto: 'Startet die automatische 5-Punkt-Erkennung.',
@@ -527,7 +532,8 @@
       l_result: '// GRÖSSE:', b_save: '⬇ PNG SPEICHERN', saved: '✓ GESPEICHERT',
       tag: 'RASTER-ANALYSE', tag_alt: 'TOTE ZELLEN',
       h_effects: '// EFFEKTE', l_night: '// NACHTMODUS:', l_tint: '// TÖNUNG:', b_off: 'AUS', b_on: 'EIN',
-      t_nighttint: 'Nachttönung-Farbe — klicken zum Wählen', l_potency: '// STÄRKE:', h_output: '// AUSGABE', l_outsize: '// GRÖSSE IN PX:' },
+      t_nighttint: 'Nachttönung-Farbe — klicken zum Wählen', l_potency: '// STÄRKE:', h_output: '// AUSGABE', l_outsize: '// GRÖSSE IN PX:',
+      b_copy: '⧉ PNG KOPIEREN', copied: '✓ KOPIERT', copyfail: '✗ FEHLER' },
     es: { b_import: '⬆ IMPORTAR', h_image: '// IMAGEN', h_detect: '// DETECCIÓN DE CUADRÍCULA:',
       b_auto: 'AUTO', b_select: 'ÁREA', b_random: 'AZAR 3', b_cells: '4 CELDAS',
       t_auto: 'Ejecuta la detección automática de 5 puntos.',
@@ -545,7 +551,8 @@
       l_result: '// TAMAÑO:', b_save: '⬇ GUARDAR PNG', saved: '✓ GUARDADO',
       tag: 'ANALIZADOR DE CUADRÍCULA', tag_alt: 'CELDAS MUERTAS',
       h_effects: '// EFECTOS', l_night: '// MODO NOCHE:', l_tint: '// TINTE:', b_off: 'OFF', b_on: 'ON',
-      t_nighttint: 'color del tinte nocturno — clic para elegir', l_potency: '// INTENSIDAD:', h_output: '// SALIDA', l_outsize: '// TAMAÑO EN PX:' },
+      t_nighttint: 'color del tinte nocturno — clic para elegir', l_potency: '// INTENSIDAD:', h_output: '// SALIDA', l_outsize: '// TAMAÑO EN PX:',
+      b_copy: '⧉ COPIAR PNG', copied: '✓ COPIADO', copyfail: '✗ ERROR' },
     it: { b_import: '⬆ IMPORTA', h_image: '// IMMAGINE', h_detect: '// RILEVAMENTO GRIGLIA:',
       b_auto: 'AUTO', b_select: 'AREA', b_random: 'CASUALE 3', b_cells: '4 CELLE',
       t_auto: 'Esegue il rilevamento automatico a 5 punti.',
@@ -563,7 +570,8 @@
       l_result: '// DIMENSIONE:', b_save: '⬇ SALVA PNG', saved: '✓ SALVATO',
       tag: 'ANALIZZATORE DI GRIGLIA', tag_alt: 'CELLE MORTE',
       h_effects: '// EFFETTI', l_night: '// MODALITÀ NOTTE:', l_tint: '// TINTA:', b_off: 'OFF', b_on: 'ON',
-      t_nighttint: 'colore tinta notturna — clicca per scegliere', l_potency: '// INTENSITÀ:', h_output: '// USCITA', l_outsize: '// DIMENSIONE IN PX:' },
+      t_nighttint: 'colore tinta notturna — clicca per scegliere', l_potency: '// INTENSITÀ:', h_output: '// USCITA', l_outsize: '// DIMENSIONE IN PX:',
+      b_copy: '⧉ COPIA PNG', copied: '✓ COPIATO', copyfail: '✗ ERRORE' },
     ja: { b_import: '⬆ 画像を読み込む', h_image: '// 画像', h_detect: '// グリッド検出:',
       b_auto: '自動', b_select: '範囲選択', b_random: 'ランダム3', b_cells: '4セル',
       t_auto: '自動5点検出を実行します。',
@@ -581,7 +589,8 @@
       l_result: '// 結果サイズ:', b_save: '⬇ PNGを保存', saved: '✓ 保存しました',
       tag: 'グリッド解析', tag_alt: '死んだセル',
       h_effects: '// エフェクト', l_night: '// ナイトモード:', l_tint: '// 色調:', b_off: 'オフ', b_on: 'オン',
-      t_nighttint: 'ナイト色 — クリックで選択', l_potency: '// 強さ:', h_output: '// 出力', l_outsize: '// 出力サイズ:' },
+      t_nighttint: 'ナイト色 — クリックで選択', l_potency: '// 強さ:', h_output: '// 出力', l_outsize: '// 出力サイズ:',
+      b_copy: '⧉ PNGをコピー', copied: '✓ コピーしました', copyfail: '✗ 失敗' },
     zh: { b_import: '⬆ 导入图像', h_image: '// 图像', h_detect: '// 网格检测：',
       b_auto: '自动', b_select: '选择区域', b_random: '随机3', b_cells: '4格',
       t_auto: '运行自动五点检测。',
@@ -599,7 +608,8 @@
       l_result: '// 结果尺寸：', b_save: '⬇ 保存 PNG', saved: '✓ 已保存',
       tag: '网格地图分析器', tag_alt: '死亡格子',
       h_effects: '// 效果', l_night: '// 夜间模式：', l_tint: '// 色调：', b_off: '关', b_on: '开',
-      t_nighttint: '夜间色调 — 点击选择', l_potency: '// 强度：', h_output: '// 输出', l_outsize: '// 输出尺寸：' },
+      t_nighttint: '夜间色调 — 点击选择', l_potency: '// 强度：', h_output: '// 输出', l_outsize: '// 输出尺寸：',
+      b_copy: '⧉ 复制 PNG', copied: '✓ 已复制', copyfail: '✗ 失败' },
   };
   let curLang = 'en';
   const t = (key) => ((I18N[curLang] || I18N.en)[key]) || I18N.en[key] || '';
@@ -684,7 +694,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v1.2.2';
+    const VER = ' // v1.2.3';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 
@@ -964,7 +974,7 @@
   // ---- Working-area image import + analysis (drag-drop / paste / click) ----
   (function setupImport() {
     const zone = $('dropzone'), mapC = $('mapCanvas'), gridC = $('gridCanvas'), trimC = $('trimCanvas'),
-      input = $('fileInput'), exportBtn = $('exportBtn'), canvasWrap = $('canvasWrap');
+      input = $('fileInput'), exportBtn = $('exportBtn'), copyBtn = $('copyBtn'), canvasWrap = $('canvasWrap');
     if (!zone || !mapC || !gridC || !input) return;
     let loaded = null;        // current map + detected grid geometry, for PNG export
     let autoFill = '#808080'; // detected primary (border) colour of the current map
@@ -1013,6 +1023,7 @@
       zone.classList.remove('grid-on');  // grid hidden by default; canvas click toggles it (hover previews)
       panX = panY = 0;                   // start centred (clears any pan from a previous map)
       if (exportBtn) exportBtn.disabled = false;
+      if (copyBtn) copyBtn.disabled = false;
       renderDisplay();
       requestAnimationFrame(applyZoom);   // re-apply persisted zoom once layout has settled
     }
@@ -1600,6 +1611,25 @@
         exportBtn.textContent = t('saved');
         setTimeout(() => { exportBtn.textContent = prev; }, 1400);
       }, 'image/png');
+    });
+
+    // Copy the exported PNG to the clipboard. Uses a Promise<Blob> inside the
+    // ClipboardItem so the write stays in the click gesture (Safari-safe).
+    function flash(btn, key) {
+      const prev = btn.textContent;
+      btn.textContent = t(key);
+      setTimeout(() => { btn.textContent = prev; }, 1400);
+    }
+    if (copyBtn) copyBtn.addEventListener('click', () => {
+      if (!loaded) return;
+      if (!(navigator.clipboard && window.ClipboardItem)) { flash(copyBtn, 'copyfail'); return; }
+      try {
+        const blobPromise = new Promise((resolve, reject) =>
+          exportCanvas().canvas.toBlob((b) => b ? resolve(b) : reject(new Error('no blob')), 'image/png'));
+        navigator.clipboard.write([new ClipboardItem({ 'image/png': blobPromise })])
+          .then(() => flash(copyBtn, 'copied'))
+          .catch(() => flash(copyBtn, 'copyfail'));
+      } catch (e) { flash(copyBtn, 'copyfail'); }
     });
 
     // ---- Map-view zoom (display only — never affects detection or the export) ----

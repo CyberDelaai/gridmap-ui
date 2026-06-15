@@ -62,6 +62,10 @@ python3 bump_version.py {x|y|z}
 - [augmented-ui](https://augmented-ui.com/) — clipped/beveled cyberpunk panel styling
 - [JetBrains Mono](https://www.jetbrains.com/lp/mono/) — UI typeface
 
+## Support
+
+If you find these tools useful, you can support development here: [boosty.to/cyberdelaai/donate](https://boosty.to/cyberdelaai/donate)
+
 ## License
 
 [MIT](LICENSE) © 2026 CyberDelaai

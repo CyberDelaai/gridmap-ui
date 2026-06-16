@@ -9,4 +9,4 @@ _(none pending)_
 
 ## SMALL (Z version bump)
 
-1. Export scaling — scale the exported map so each cell is a chosen pixel size (VTT presets: Roll20 70px, Foundry 100/150px, + custom)
+_(none pending)_

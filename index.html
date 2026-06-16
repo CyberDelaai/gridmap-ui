@@ -1,4 +1,4 @@
-<!-- GRIDMAP v1.3.0 -->
+<!-- GRIDMAP v1.3.1 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -395,6 +395,23 @@
   /* single focus ring around the whole stepper (input + arrows) */
   .coord-stepper :focus { outline: none; }
   .coord-stepper:focus-within { outline: 2px solid var(--accent); outline-offset: 0; }
+  /* EXPORT → CELL SIZE: VTT-scale preset dropdown + custom px field */
+  .scale-select {
+    background: var(--panel); color: var(--main); border: 1px solid rgba(var(--main-rgb),0.4);
+    padding: 6px 8px; font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+    cursor: pointer; width: 158px;
+  }
+  .scale-select:focus { outline: none; border-color: var(--main); box-shadow: 0 0 6px rgba(var(--main-rgb),0.4); }
+  .scale-custom {
+    width: 158px; background: var(--panel); color: var(--accent);
+    border: 1px solid rgba(var(--main-rgb),0.4);
+    font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700;
+    padding: 6px 7px; text-align: right;
+  }
+  .scale-custom:focus { outline: none; border-color: var(--main); box-shadow: 0 0 6px rgba(var(--main-rgb),0.4); }
+  .scale-custom::-webkit-outer-spin-button, .scale-custom::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .scale-custom { -moz-appearance: textfield; appearance: textfield; }
 
   @media (max-width: 1100px) {
     .layout { flex-wrap: wrap; }
@@ -422,7 +439,7 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable" data-i18n="tag">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">1.3.0</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable" data-i18n="tag">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">1.3.1</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
@@ -557,6 +574,21 @@
       <hr class="divider" />
       <h2 data-i18n="h_export">// EXPORT</h2>
       <p class="hint" data-i18n="export_hint">Save the map as a PNG, named with its NN×MM size.</p>
+      <!-- EXPORT SCALE: render each grid cell at a chosen pixel size (VTT presets + custom) -->
+      <div class="fx-toggle" id="scaleRow">
+        <span class="fx-label" data-i18n="l_scale">// CELL SIZE:</span>
+        <select class="scale-select" id="scaleSel" aria-label="exported cell pixel size">
+          <option value="0" data-i18n="o_original">ORIGINAL</option>
+          <option value="70">ROLL20 · 70</option>
+          <option value="100">FOUNDRY · 100</option>
+          <option value="150">FOUNDRY · 150</option>
+          <option value="custom" data-i18n="o_custom">CUSTOM…</option>
+        </select>
+      </div>
+      <div class="fx-toggle" id="scaleCustomRow" hidden>
+        <span class="fx-label" data-i18n="l_custompx">// CUSTOM PX:</span>
+        <input type="number" id="scaleCustom" class="scale-custom" min="1" max="2000" step="1" inputmode="numeric" aria-label="custom cell pixel size" />
+      </div>
       <div class="calc-size" id="calcSize">
         <span class="size-label" data-i18n="l_result">// RESULT SIZE:</span>
         <span class="size-vals">
@@ -589,6 +621,7 @@
       b_draw: '✎ DRAW CELL', t_draw: 'Draw one cell and GRIDMAP tiles it across the whole map. Drag the cell to move it, or its edges to resize.',
       hint_draw: 'DRAG TO DRAW ONE CELL',
       b_esc_hint: 'PRESS ESC TO EXIT DRAWING MODE', l_cellcoords: '// CELL · PX', l_cellsize: 'SIZE',
+      l_scale: '// CELL SIZE:', l_custompx: '// CUSTOM PX:', o_original: 'ORIGINAL', o_custom: 'CUSTOM…',
       ph_title: 'DROP A MAP IMAGE HERE', ph_sub: 'drag & drop · paste · or click to browse',
       ph_desc: 'GRIDMAP reads the grid and reports its NN×MM size',
       hint_toggle: '// Click to toggle detected grid', hint_zoom: '// Ctrl+click to zoom in, Ctrl+right-click to zoom out',
@@ -612,6 +645,7 @@
       b_draw: '✎ ЯЧЕЙКА', t_draw: 'Нарисуйте одну ячейку — GRIDMAP размножит её по всей карте. Перетаскивайте ячейку, чтобы сдвинуть, или края — чтобы изменить размер.',
       hint_draw: 'НАРИСУЙТЕ ОДНУ ЯЧЕЙКУ',
       b_esc_hint: 'НАЖМИТЕ ESC ДЛЯ ВЫХОДА ИЗ РЕЖИМА РИСОВАНИЯ', l_cellcoords: '// ЯЧЕЙКА · PX', l_cellsize: 'РАЗМЕР',
+      l_scale: '// РАЗМЕР ЯЧЕЙКИ:', l_custompx: '// СВОЙ PX:', o_original: 'ОРИГИНАЛ', o_custom: 'СВОЙ…',
       ph_title: 'ПЕРЕТАЩИТЕ КАРТУ СЮДА', ph_sub: 'перетащите · вставьте · или нажмите для выбора',
       ph_desc: 'GRIDMAP считывает сетку и показывает размер NN×MM',
       hint_toggle: '// Клик — показать/скрыть сетку', hint_zoom: '// Ctrl+клик — приблизить, Ctrl+ПКМ — отдалить',
@@ -635,6 +669,7 @@
       b_draw: '✎ CASE', t_draw: 'Dessinez une case et GRIDMAP la répète sur toute la carte. Glissez la case pour la déplacer, ou ses bords pour la redimensionner.',
       hint_draw: 'TRACEZ UNE CASE',
       b_esc_hint: 'APPUYEZ SUR ÉCHAP POUR QUITTER LE MODE DESSIN', l_cellcoords: '// CASE · PX', l_cellsize: 'TAILLE',
+      l_scale: '// TAILLE CASE :', l_custompx: '// PX PERSO :', o_original: 'ORIGINAL', o_custom: 'PERSO…',
       ph_title: 'DÉPOSEZ UNE CARTE ICI', ph_sub: 'glisser-déposer · coller · ou cliquer pour parcourir',
       ph_desc: 'GRIDMAP lit la grille et indique sa taille NN×MM',
       hint_toggle: '// Cliquez pour afficher/masquer la grille', hint_zoom: '// Ctrl+clic pour zoomer, Ctrl+clic droit pour dézoomer',
@@ -658,6 +693,7 @@
       b_draw: '✎ ZELLE', t_draw: 'Zeichnen Sie eine Zelle und GRIDMAP kachelt sie über die ganze Karte. Ziehen Sie die Zelle zum Verschieben oder ihre Kanten zum Anpassen.',
       hint_draw: 'EINE ZELLE AUFZIEHEN',
       b_esc_hint: 'ESC DRÜCKEN, UM DEN ZEICHENMODUS ZU VERLASSEN', l_cellcoords: '// ZELLE · PX', l_cellsize: 'GRÖSSE',
+      l_scale: '// ZELLENGRÖSSE:', l_custompx: '// EIGENE PX:', o_original: 'ORIGINAL', o_custom: 'EIGENE…',
       ph_title: 'KARTENBILD HIER ABLEGEN', ph_sub: 'ziehen & ablegen · einfügen · oder klicken zum Auswählen',
       ph_desc: 'GRIDMAP liest das Raster und zeigt die Größe NN×MM',
       hint_toggle: '// Klick: erkanntes Raster ein/aus', hint_zoom: '// Strg+Klick zoomt hinein, Strg+Rechtsklick heraus',
@@ -681,6 +717,7 @@
       b_draw: '✎ CELDA', t_draw: 'Dibuja una celda y GRIDMAP la repite por todo el mapa. Arrastra la celda para moverla, o sus bordes para redimensionarla.',
       hint_draw: 'DIBUJA UNA CELDA',
       b_esc_hint: 'PULSA ESC PARA SALIR DEL MODO DIBUJO', l_cellcoords: '// CELDA · PX', l_cellsize: 'TAMAÑO',
+      l_scale: '// TAMAÑO CELDA:', l_custompx: '// PX PERSON.:', o_original: 'ORIGINAL', o_custom: 'PERSON.…',
       ph_title: 'SUELTA UN MAPA AQUÍ', ph_sub: 'arrastra y suelta · pega · o haz clic para buscar',
       ph_desc: 'GRIDMAP lee la cuadrícula e indica su tamaño NN×MM',
       hint_toggle: '// Clic para mostrar/ocultar la cuadrícula', hint_zoom: '// Ctrl+clic para acercar, Ctrl+clic derecho para alejar',
@@ -704,6 +741,7 @@
       b_draw: '✎ CELLA', t_draw: 'Disegna una cella e GRIDMAP la ripete su tutta la mappa. Trascina la cella per spostarla, o i bordi per ridimensionarla.',
       hint_draw: 'TRACCIA UNA CELLA',
       b_esc_hint: 'PREMI ESC PER USCIRE DALLA MODALITÀ DISEGNO', l_cellcoords: '// CELLA · PX', l_cellsize: 'DIM.',
+      l_scale: '// DIM. CELLA:', l_custompx: '// PX PERS.:', o_original: 'ORIGINALE', o_custom: 'PERS.…',
       ph_title: 'TRASCINA QUI UNA MAPPA', ph_sub: 'trascina · incolla · o clicca per sfogliare',
       ph_desc: 'GRIDMAP legge la griglia e ne riporta la dimensione NN×MM',
       hint_toggle: '// Clic per mostrare/nascondere la griglia', hint_zoom: '// Ctrl+clic per ingrandire, Ctrl+clic destro per ridurre',
@@ -727,6 +765,7 @@
       b_draw: '✎ セルを描く', t_draw: 'セルを1つ描くと、GRIDMAP が地図全体に敷き詰めます。セルをドラッグで移動、端をドラッグでサイズ変更。',
       hint_draw: 'ドラッグでセルを1つ描く',
       b_esc_hint: 'ESC キーで描画モードを終了', l_cellcoords: '// セル · PX', l_cellsize: 'サイズ',
+      l_scale: '// セルサイズ:', l_custompx: '// カスタム PX:', o_original: '元のサイズ', o_custom: 'カスタム…',
       ph_title: 'ここに地図画像をドロップ', ph_sub: 'ドラッグ＆ドロップ・貼り付け・またはクリックで選択',
       ph_desc: 'GRIDMAP がグリッドを読み取り、NN×MM のサイズを表示します',
       hint_toggle: '// クリックでグリッド表示を切替', hint_zoom: '// Ctrl+クリックで拡大、Ctrl+右クリックで縮小',
@@ -750,6 +789,7 @@
       b_draw: '✎ 绘制单元格', t_draw: '绘制一个单元格，GRIDMAP 会将其平铺到整张地图。拖动单元格可移动，拖动边缘可调整大小。',
       hint_draw: '拖动绘制一个单元格',
       b_esc_hint: '按 ESC 退出绘制模式', l_cellcoords: '// 单元格 · PX', l_cellsize: '尺寸',
+      l_scale: '// 单元格尺寸：', l_custompx: '// 自定义 PX：', o_original: '原始', o_custom: '自定义…',
       ph_title: '将地图图像拖到此处', ph_sub: '拖放 · 粘贴 · 或点击浏览',
       ph_desc: 'GRIDMAP 读取网格并报告其 NN×MM 尺寸',
       hint_toggle: '// 点击切换网格显示', hint_zoom: '// Ctrl+点击放大，Ctrl+右键点击缩小',
@@ -848,7 +888,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v1.3.0';
+    const VER = ' // v1.3.1';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 
@@ -1229,6 +1269,7 @@
       fillTransparent = $('fillTransparent'), fillColor = $('fillColor');
     const nightToggle = $('nightToggle'), nightColorRow = $('nightColorRow'), nightSwatch = $('nightSwatch'), nightInput = $('nightInput'),
       potencyRow = $('potencyRow'), nightPotencySlider = $('nightPotency');
+    const scaleSel = $('scaleSel'), scaleCustomRow = $('scaleCustomRow'), scaleCustom = $('scaleCustom');
     const autoBtn = $('autoBtn'), selectBtn = $('selectBtn'), randomBtn = $('randomBtn'), cellBtn = $('cellBtn'), drawBtn = $('drawBtn'),
       drawCoordsWrap = $('drawCoordsWrap'), drawCoords = $('drawCoords'), cellX = $('cellX'), cellY = $('cellY'), cellSize = $('cellSize'),
       colVal = $('colVal'), rowVal = $('rowVal'), calcSize = $('calcSize'), calcVal = $('calcVal'), outVal = $('outVal');
@@ -1248,6 +1289,7 @@
     let selecting = false, regions = [], dragStart = null, dragRect = null, blockZoneClick = false;  // region-pick mode
     let cellMode = false;   // "4 cells" sub-mode of selecting: one box → cell-size-seeded detection
     let drawMode = false, drawnCell = null, cellDrag = null;   // DRAW CELL: one user-drawn cell tiled into a grid (drawnCell in image px)
+    let exportCellPx = 0, exportCustom = false;   // EXPORT scale: target px per grid cell (0 = native); exportCustom = the CUSTOM… field is the active selector
     try {
       if (localStorage.getItem('gridmap:edgeMode') === 'expand') edgeMode = 'expand';
       const fm = localStorage.getItem('gridmap:fillMode'); if (fm === 'solid' || fm === 'transparent') fillMode = fm;
@@ -1258,6 +1300,9 @@
       const nc = toHex(localStorage.getItem('gridmap:nightColor') || ''); if (nc) nightColor = nc;
       const npp = parseInt(localStorage.getItem('gridmap:nightPotency'), 10);
       if (Number.isFinite(npp)) nightPotency = Math.min(1, Math.max(0, npp / 100));
+      const ecp = parseInt(localStorage.getItem('gridmap:exportCellPx'), 10);
+      if (Number.isFinite(ecp) && ecp > 0) exportCellPx = Math.min(2000, ecp);
+      exportCustom = exportCellPx > 0 && (localStorage.getItem('gridmap:exportCustom') === '1' || ![70, 100, 150].includes(exportCellPx));
     } catch (e) { /* storage blocked */ }
     const save = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 
@@ -1366,6 +1411,39 @@
     if (nightPotencySlider) nightPotencySlider.addEventListener('input', () => {
       nightPotency = Math.min(1, Math.max(0, (parseInt(nightPotencySlider.value, 10) || 0) / 100));
       save('gridmap:nightPotency', Math.round(nightPotency * 100)); renderDisplay();
+    });
+
+    // ---- EXPORT → CELL SIZE: scale the exported PNG so each grid cell is
+    // `exportCellPx` px (0 = original). The preset dropdown sets common VTT sizes;
+    // CUSTOM… reveals a px field. Only the export + the readout change — the
+    // on-screen preview stays native (zoom handles viewing). ----
+    function syncScaleUI() {
+      if (!scaleSel) return;
+      scaleSel.value = exportCustom ? 'custom' : String(exportCellPx);
+      if (scaleCustomRow) scaleCustomRow.hidden = !exportCustom;
+      if (exportCustom && scaleCustom && document.activeElement !== scaleCustom) scaleCustom.value = exportCellPx || '';
+    }
+    function setExportCellPx(px) {
+      exportCellPx = (Number.isFinite(px) && px > 0) ? Math.min(2000, px) : 0;
+      save('gridmap:exportCellPx', exportCellPx);
+      save('gridmap:exportCustom', exportCustom ? '1' : '0');
+      if (loaded) renderDisplay();   // refresh the // RESULT SIZE px readout
+    }
+    if (scaleSel) scaleSel.addEventListener('change', () => {
+      if (scaleSel.value === 'custom') {
+        exportCustom = true;
+        const n = parseInt(scaleCustom && scaleCustom.value, 10);
+        setExportCellPx(Number.isFinite(n) && n > 0 ? n : (exportCellPx || 100));
+      } else {
+        exportCustom = false;
+        setExportCellPx(parseInt(scaleSel.value, 10) || 0);
+      }
+      syncScaleUI();
+      if (exportCustom && scaleCustom) scaleCustom.focus();
+    });
+    if (scaleCustom) scaleCustom.addEventListener('input', () => {
+      exportCustom = true;
+      setExportCellPx(parseInt(scaleCustom.value, 10));   // don't re-sync (would clobber the field mid-type)
     });
 
     // ---- AUTO | MANUAL grid mode ----
@@ -1695,6 +1773,7 @@
     syncAutoMode();
     refreshNight();
     syncEffects();
+    syncScaleUI();
 
     // ---- Result layout: how the edge-fix reshapes the map. Shared by the
     // on-canvas preview AND the PNG export so they always match. Returns
@@ -1888,6 +1967,16 @@
       for (let f = hOff % hFrac; f <= 1.0001; f += hFrac) { const y = Math.round(ry + f * rh) + 0.5; g.moveTo(rx, y); g.lineTo(rx + rw, y); }
       g.stroke();
     }
+    // EXPORT scale factor so each grid cell renders at `exportCellPx` px (0 = native).
+    // Clamped so the exported canvas never exceeds MAX_EXPORT_SIDE on a side.
+    const MAX_EXPORT_SIDE = 12000;
+    function scaleFactorFor(cols, outW, outH) {
+      if (!exportCellPx || !(outW > 0) || !(cols > 0)) return 1;
+      let f = exportCellPx / (outW / cols);          // target px ÷ native px-per-cell
+      const big = Math.max(outW, outH || 0) * f;
+      if (big > MAX_EXPORT_SIDE) f *= MAX_EXPORT_SIDE / big;
+      return f;
+    }
     function setReadout(cols, rows, outW, outH) {
       const est = view().estimated;
       if (colVal) colVal.textContent = cols;
@@ -1896,8 +1985,9 @@
       // (reflects manual edits and crop/expand)
       if (calcVal) calcVal.textContent = cols + '×' + rows;
       if (calcSize) calcSize.classList.toggle('estimated', est);
-      // the exported PNG's pixel dimensions (paint() runs at scale 1 → outW×outH)
-      if (outVal) outVal.textContent = Math.round(outW) + '×' + Math.round(outH) + ' PX';
+      // the exported PNG's pixel dimensions (native outW×outH × the export scale)
+      const f = scaleFactorFor(cols, outW, outH);
+      if (outVal) outVal.textContent = Math.round(outW * f) + '×' + Math.round(outH * f) + ' PX';
       // checkerboard behind transparent padding — only where padding exists (expand / manual)
       zone.classList.toggle('transp', fillMode === 'transparent' && (manual || edgeMode === 'expand'));
       applyZoom();           // re-fit the on-screen map to the current zoom
@@ -1972,11 +2062,11 @@
       setReadout(L.cols, L.rows, L.outW, L.outH);
     }
 
-    // PNG export = the same layout at full resolution.
+    // PNG export = the same layout, scaled so each cell is `exportCellPx` px (native when 0).
     function exportCanvas() {
       const c = document.createElement('canvas');
       const L = computeLayout();
-      paint(c, L, 1);
+      paint(c, L, scaleFactorFor(L.cols, L.outW, L.outH));
       return { canvas: c, cols: L.cols, rows: L.rows };
     }
 
@@ -1989,7 +2079,8 @@
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         const tinted = (nightMode && nightPotency > 0) ? '_tinted' : '';
-        a.download = 'gridmap_' + Math.floor(Date.now() / 1000) + '_' + out.cols + 'x' + out.rows + tinted + '.png';
+        const px = exportCellPx ? ('_' + exportCellPx + 'px') : '';   // cell pixel size when scaled
+        a.download = 'gridmap_' + Math.floor(Date.now() / 1000) + '_' + out.cols + 'x' + out.rows + px + tinted + '.png';
         a.click();
         setTimeout(() => URL.revokeObjectURL(a.href), 2000);
         const prev = exportBtn.textContent;

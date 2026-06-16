@@ -18,6 +18,8 @@ the cell count. No build step, no backend — just open `index.html`.
 - **Draw a cell** — when detection won't cooperate, draw one square cell by hand
   and GRIDMAP tiles it across the whole map. The cell stays adjustable — drag it
   to move the grid, or an edge/corner to resize.
+- **Export scaling** — scale the exported PNG so each cell is a chosen pixel size:
+  VTT presets (Roll20 70px, Foundry 100/150px) or a custom value.
 
 ## How detection works
 

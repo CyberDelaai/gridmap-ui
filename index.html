@@ -1,4 +1,4 @@
-<!-- GRIDMAP v1.2.6 -->
+<!-- GRIDMAP v1.3.0 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -338,6 +338,63 @@
   /* region-select mode: crosshair + always-visible selection overlay */
   .dropzone.selecting, .dropzone.selecting .canvas-wrap, .dropzone.selecting canvas { cursor: crosshair; }
   .dropzone.selecting #gridCanvas { opacity: 1; }
+  /* draw-cell mode: same crosshair when defining a fresh cell + always-on grid.
+     (over an existing cell the JS swaps in move/resize cursors inline) */
+  .dropzone.drawing, .dropzone.drawing .canvas-wrap, .dropzone.drawing canvas { cursor: crosshair; }
+  .dropzone.drawing #gridCanvas { opacity: 1; }
+  /* "PRESS ESC…" banner: shown pinned at the top of the map only while drawing */
+  .draw-banner {
+    position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 6;
+    display: none; padding: 7px 16px; background: rgba(11,11,16,0.92);
+    color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; white-space: nowrap; pointer-events: none;
+    box-shadow: 0 0 14px rgba(0,0,0,0.5);
+    --aug-border-all: 1px; --aug-border-bg: rgba(var(--accent-rgb),0.7); --aug-tl: 8px; --aug-br: 8px;
+  }
+  .dropzone.drawing .draw-banner { display: block; }
+  /* DRAW CELL sub-panel: precise cell X/Y + size inputs, sliding down from the button.
+     The wrapper animates max-height + opacity (collapses fully when closed). The cap
+     just needs to exceed the panel's fixed ~118px height. */
+  .draw-coords-wrap {
+    max-height: 0; opacity: 0; margin-top: 0; overflow: hidden;
+    transition: max-height .26s cubic-bezier(.4,0,.2,1), opacity .2s ease, margin-top .26s cubic-bezier(.4,0,.2,1);
+  }
+  .draw-coords-wrap.open { max-height: 160px; opacity: 1; margin-top: 10px; }
+  .draw-coords {
+    display: flex; flex-direction: column; gap: 8px; padding: 12px;
+    background: var(--panel-2);
+    --aug-border-all: 1px; --aug-border-bg: rgba(var(--main-rgb),0.45); --aug-tl: 8px; --aug-br: 8px;
+  }
+  .coord-title { font-size: 12px; letter-spacing: 2px; color: var(--dim); text-transform: uppercase; }
+  .coord-row { display: flex; align-items: center; gap: 10px; }
+  .coord-field { display: flex; align-items: center; gap: 7px; flex: 1; min-width: 0; }
+  .coord-field label { font-size: 12px; font-weight: 700; letter-spacing: 1px; color: var(--main); min-width: 2.5ch; }
+  .coord-input {
+    width: 100%; min-width: 0; background: var(--panel); color: var(--accent);
+    border: 1px solid rgba(var(--main-rgb),0.4); border-radius: 0;
+    font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; padding: 6px 7px;
+  }
+  .coord-input:disabled { opacity: .4; cursor: not-allowed; }
+  /* hide the native number spinner — the custom ▲▼ stepper replaces it */
+  .coord-input::-webkit-outer-spin-button, .coord-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .coord-input { -moz-appearance: textfield; appearance: textfield; }
+  /* custom stepper (input + stacked arrows), ported from chronos' year picker */
+  .coord-stepper { display: flex; align-items: stretch; flex: 1; min-width: 0; }
+  .coord-stepper .coord-input { border-right: none; }
+  .coord-spin { display: flex; flex-direction: column; flex-shrink: 0; }
+  .coord-btn {
+    flex: 1; width: 22px; cursor: pointer; line-height: 1; padding: 0;
+    background: var(--panel); color: var(--dim);
+    border: 1px solid rgba(var(--main-rgb),0.4); font-size: 8px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .12s, color .12s, border-color .12s;
+  }
+  .coord-btn:hover { background: var(--main); color: var(--bg); border-color: var(--main); }
+  .coord-spin .coord-btn + .coord-btn { border-top: none; }   /* shared middle edge */
+  .coord-btn:disabled { opacity: .4; cursor: not-allowed; }
+  /* single focus ring around the whole stepper (input + arrows) */
+  .coord-stepper :focus { outline: none; }
+  .coord-stepper:focus-within { outline: 2px solid var(--accent); outline-offset: 0; }
 
   @media (max-width: 1100px) {
     .layout { flex-wrap: wrap; }
@@ -365,7 +422,7 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable" data-i18n="tag">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">1.2.6</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable" data-i18n="tag">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">1.3.0</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
@@ -385,6 +442,47 @@
             <button class="btn detect-btn" id="randomBtn" type="button" data-augmented-ui="tl-clip br-clip both" data-i18n="b_random" data-i18n-title="t_random">RANDOM 3</button>
             <button class="btn detect-btn" id="cellBtn" type="button" data-augmented-ui="tl-clip br-clip both" data-i18n="b_cells" data-i18n-title="t_cells">4 CELLS</button>
           </div>
+          <div class="detect-btns">
+            <button class="btn detect-btn" id="drawBtn" type="button" data-augmented-ui="tl-clip br-clip both" data-i18n="b_draw" data-i18n-title="t_draw">✎ DRAW CELL</button>
+          </div>
+          <!-- DRAW CELL sub-panel: precise X/Y of the cell's top-left corner + its square size (image px).
+               Wrapper animates the slide-open (grid-rows 0fr→1fr) while drawing. -->
+          <div class="draw-coords-wrap" id="drawCoordsWrap" inert>
+          <div class="draw-coords" id="drawCoords" data-augmented-ui="tl-clip br-clip border">
+            <span class="coord-title" data-i18n="l_cellcoords">// CELL · PX</span>
+            <div class="coord-row">
+              <span class="coord-field"><label for="cellX">X</label>
+                <span class="coord-stepper">
+                  <input id="cellX" class="coord-input" type="number" step="any" inputmode="decimal" aria-label="cell left (px)" />
+                  <span class="coord-spin">
+                    <button class="coord-btn" type="button" data-target="cellX" data-delta="1" tabindex="-1" aria-label="X up">▲</button>
+                    <button class="coord-btn" type="button" data-target="cellX" data-delta="-1" tabindex="-1" aria-label="X down">▼</button>
+                  </span>
+                </span>
+              </span>
+              <span class="coord-field"><label for="cellY">Y</label>
+                <span class="coord-stepper">
+                  <input id="cellY" class="coord-input" type="number" step="any" inputmode="decimal" aria-label="cell top (px)" />
+                  <span class="coord-spin">
+                    <button class="coord-btn" type="button" data-target="cellY" data-delta="1" tabindex="-1" aria-label="Y up">▲</button>
+                    <button class="coord-btn" type="button" data-target="cellY" data-delta="-1" tabindex="-1" aria-label="Y down">▼</button>
+                  </span>
+                </span>
+              </span>
+            </div>
+            <div class="coord-row">
+              <span class="coord-field"><label for="cellSize" data-i18n="l_cellsize">SIZE</label>
+                <span class="coord-stepper">
+                  <input id="cellSize" class="coord-input" type="number" step="any" min="1" inputmode="decimal" aria-label="cell size (px)" />
+                  <span class="coord-spin">
+                    <button class="coord-btn" type="button" data-target="cellSize" data-delta="1" tabindex="-1" aria-label="size up">▲</button>
+                    <button class="coord-btn" type="button" data-target="cellSize" data-delta="-1" tabindex="-1" aria-label="size down">▼</button>
+                  </span>
+                </span>
+              </span>
+            </div>
+          </div>
+          </div>
         </div>
       </div>
     </aside>
@@ -392,6 +490,7 @@
     <!-- CENTER working area -->
     <main class="workspace">
       <div class="dropzone" id="dropzone" aria-label="drop a map image">
+        <div class="draw-banner" data-i18n="b_esc_hint" aria-hidden="true">PRESS ESC TO EXIT DRAWING MODE</div>
         <div class="placeholder">
           <b data-i18n="ph_title">DROP A MAP IMAGE HERE</b><br />
           <span data-i18n="ph_sub">drag &amp; drop · paste · or click to browse</span><br />
@@ -487,6 +586,9 @@
       t_select: 'Choose the area(s) for grid detection — hold Ctrl to pick multiple.',
       t_random: 'Samples 3 random areas to detect from — click again to re-roll.',
       t_cells: 'Drag a box around any 2×2 block of cells; the grid is detected at that cell size (the more precisely you align it, the better).',
+      b_draw: '✎ DRAW CELL', t_draw: 'Draw one cell and GRIDMAP tiles it across the whole map. Drag the cell to move it, or its edges to resize.',
+      hint_draw: 'DRAG TO DRAW ONE CELL',
+      b_esc_hint: 'PRESS ESC TO EXIT DRAWING MODE', l_cellcoords: '// CELL · PX', l_cellsize: 'SIZE',
       ph_title: 'DROP A MAP IMAGE HERE', ph_sub: 'drag & drop · paste · or click to browse',
       ph_desc: 'GRIDMAP reads the grid and reports its NN×MM size',
       hint_toggle: '// Click to toggle detected grid', hint_zoom: '// Ctrl+click to zoom in, Ctrl+right-click to zoom out',
@@ -507,6 +609,9 @@
       t_select: 'Выберите область(и) для определения сетки — удерживайте Ctrl для нескольких.',
       t_random: 'Берёт 3 случайные области — нажмите ещё раз для пересчёта.',
       t_cells: 'Обведите рамкой блок 2×2 клетки; сетка определится по этому размеру (чем точнее, тем лучше).',
+      b_draw: '✎ ЯЧЕЙКА', t_draw: 'Нарисуйте одну ячейку — GRIDMAP размножит её по всей карте. Перетаскивайте ячейку, чтобы сдвинуть, или края — чтобы изменить размер.',
+      hint_draw: 'НАРИСУЙТЕ ОДНУ ЯЧЕЙКУ',
+      b_esc_hint: 'НАЖМИТЕ ESC ДЛЯ ВЫХОДА ИЗ РЕЖИМА РИСОВАНИЯ', l_cellcoords: '// ЯЧЕЙКА · PX', l_cellsize: 'РАЗМЕР',
       ph_title: 'ПЕРЕТАЩИТЕ КАРТУ СЮДА', ph_sub: 'перетащите · вставьте · или нажмите для выбора',
       ph_desc: 'GRIDMAP считывает сетку и показывает размер NN×MM',
       hint_toggle: '// Клик — показать/скрыть сетку', hint_zoom: '// Ctrl+клик — приблизить, Ctrl+ПКМ — отдалить',
@@ -527,6 +632,9 @@
       t_select: 'Choisissez la ou les zones de détection — maintenez Ctrl pour en sélectionner plusieurs.',
       t_random: 'Échantillonne 3 zones aléatoires — recliquez pour relancer.',
       t_cells: 'Tracez un cadre autour d’un bloc de 2×2 cases ; la grille est détectée à cette taille (plus c’est précis, mieux c’est).',
+      b_draw: '✎ CASE', t_draw: 'Dessinez une case et GRIDMAP la répète sur toute la carte. Glissez la case pour la déplacer, ou ses bords pour la redimensionner.',
+      hint_draw: 'TRACEZ UNE CASE',
+      b_esc_hint: 'APPUYEZ SUR ÉCHAP POUR QUITTER LE MODE DESSIN', l_cellcoords: '// CASE · PX', l_cellsize: 'TAILLE',
       ph_title: 'DÉPOSEZ UNE CARTE ICI', ph_sub: 'glisser-déposer · coller · ou cliquer pour parcourir',
       ph_desc: 'GRIDMAP lit la grille et indique sa taille NN×MM',
       hint_toggle: '// Cliquez pour afficher/masquer la grille', hint_zoom: '// Ctrl+clic pour zoomer, Ctrl+clic droit pour dézoomer',
@@ -547,6 +655,9 @@
       t_select: 'Bereich(e) für die Rastererkennung wählen — Strg halten für mehrere.',
       t_random: 'Nimmt 3 zufällige Bereiche — erneut klicken zum Neuwürfeln.',
       t_cells: 'Ziehen Sie einen Rahmen um einen 2×2-Zellenblock; das Raster wird in dieser Zellgröße erkannt (je genauer, desto besser).',
+      b_draw: '✎ ZELLE', t_draw: 'Zeichnen Sie eine Zelle und GRIDMAP kachelt sie über die ganze Karte. Ziehen Sie die Zelle zum Verschieben oder ihre Kanten zum Anpassen.',
+      hint_draw: 'EINE ZELLE AUFZIEHEN',
+      b_esc_hint: 'ESC DRÜCKEN, UM DEN ZEICHENMODUS ZU VERLASSEN', l_cellcoords: '// ZELLE · PX', l_cellsize: 'GRÖSSE',
       ph_title: 'KARTENBILD HIER ABLEGEN', ph_sub: 'ziehen & ablegen · einfügen · oder klicken zum Auswählen',
       ph_desc: 'GRIDMAP liest das Raster und zeigt die Größe NN×MM',
       hint_toggle: '// Klick: erkanntes Raster ein/aus', hint_zoom: '// Strg+Klick zoomt hinein, Strg+Rechtsklick heraus',
@@ -567,6 +678,9 @@
       t_select: 'Elige las áreas para la detección — mantén Ctrl para varias.',
       t_random: 'Toma 3 áreas aleatorias — pulsa de nuevo para repetir.',
       t_cells: 'Dibuja un recuadro sobre un bloque de 2×2 celdas; la cuadrícula se detecta con ese tamaño (cuanto más preciso, mejor).',
+      b_draw: '✎ CELDA', t_draw: 'Dibuja una celda y GRIDMAP la repite por todo el mapa. Arrastra la celda para moverla, o sus bordes para redimensionarla.',
+      hint_draw: 'DIBUJA UNA CELDA',
+      b_esc_hint: 'PULSA ESC PARA SALIR DEL MODO DIBUJO', l_cellcoords: '// CELDA · PX', l_cellsize: 'TAMAÑO',
       ph_title: 'SUELTA UN MAPA AQUÍ', ph_sub: 'arrastra y suelta · pega · o haz clic para buscar',
       ph_desc: 'GRIDMAP lee la cuadrícula e indica su tamaño NN×MM',
       hint_toggle: '// Clic para mostrar/ocultar la cuadrícula', hint_zoom: '// Ctrl+clic para acercar, Ctrl+clic derecho para alejar',
@@ -587,6 +701,9 @@
       t_select: 'Scegli le aree per il rilevamento — tieni premuto Ctrl per più aree.',
       t_random: 'Campiona 3 aree casuali — clicca di nuovo per rigenerare.',
       t_cells: 'Traccia un riquadro attorno a un blocco di 2×2 celle; la griglia viene rilevata con quella dimensione (più è preciso, meglio è).',
+      b_draw: '✎ CELLA', t_draw: 'Disegna una cella e GRIDMAP la ripete su tutta la mappa. Trascina la cella per spostarla, o i bordi per ridimensionarla.',
+      hint_draw: 'TRACCIA UNA CELLA',
+      b_esc_hint: 'PREMI ESC PER USCIRE DALLA MODALITÀ DISEGNO', l_cellcoords: '// CELLA · PX', l_cellsize: 'DIM.',
       ph_title: 'TRASCINA QUI UNA MAPPA', ph_sub: 'trascina · incolla · o clicca per sfogliare',
       ph_desc: 'GRIDMAP legge la griglia e ne riporta la dimensione NN×MM',
       hint_toggle: '// Clic per mostrare/nascondere la griglia', hint_zoom: '// Ctrl+clic per ingrandire, Ctrl+clic destro per ridurre',
@@ -607,6 +724,9 @@
       t_select: 'グリッド検出する範囲を選択 — Ctrlを押しながら複数選択。',
       t_random: 'ランダムな3つの範囲を使用 — 再クリックで引き直し。',
       t_cells: '2×2のセルブロックを枠で囲むと、そのセルサイズでグリッドを検出します（正確なほど良い）。',
+      b_draw: '✎ セルを描く', t_draw: 'セルを1つ描くと、GRIDMAP が地図全体に敷き詰めます。セルをドラッグで移動、端をドラッグでサイズ変更。',
+      hint_draw: 'ドラッグでセルを1つ描く',
+      b_esc_hint: 'ESC キーで描画モードを終了', l_cellcoords: '// セル · PX', l_cellsize: 'サイズ',
       ph_title: 'ここに地図画像をドロップ', ph_sub: 'ドラッグ＆ドロップ・貼り付け・またはクリックで選択',
       ph_desc: 'GRIDMAP がグリッドを読み取り、NN×MM のサイズを表示します',
       hint_toggle: '// クリックでグリッド表示を切替', hint_zoom: '// Ctrl+クリックで拡大、Ctrl+右クリックで縮小',
@@ -627,6 +747,9 @@
       t_select: '选择用于检测网格的区域 — 按住 Ctrl 可多选。',
       t_random: '随机取 3 个区域检测 — 再次点击重新随机。',
       t_cells: '框选任意 2×2 的格子块；网格将按该格子尺寸检测（越精确越好）。',
+      b_draw: '✎ 绘制单元格', t_draw: '绘制一个单元格，GRIDMAP 会将其平铺到整张地图。拖动单元格可移动，拖动边缘可调整大小。',
+      hint_draw: '拖动绘制一个单元格',
+      b_esc_hint: '按 ESC 退出绘制模式', l_cellcoords: '// 单元格 · PX', l_cellsize: '尺寸',
       ph_title: '将地图图像拖到此处', ph_sub: '拖放 · 粘贴 · 或点击浏览',
       ph_desc: 'GRIDMAP 读取网格并报告其 NN×MM 尺寸',
       hint_toggle: '// 点击切换网格显示', hint_zoom: '// Ctrl+点击放大，Ctrl+右键点击缩小',
@@ -725,7 +848,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v1.2.6';
+    const VER = ' // v1.3.0';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 
@@ -1034,6 +1157,7 @@
         loaded.vFrac = 1 / loaded.cols; loaded.vOff = 0; loaded.hFrac = 1 / loaded.rows; loaded.hOff = 0;
       }
       loaded.confidence = res.confidence;
+      loaded.drawn = false;   // an auto/select/random detection supersedes any drawn cell
     }
 
     function onImage(image, restore) {
@@ -1042,11 +1166,13 @@
       loaded = { image, cols: 1, rows: 1, vFrac: 1, vOff: 0, hFrac: 1, hOff: 0, estimated: true, confidence: 0 };
       detectGrid(null);                // full-image detection
       autoFill = edgeColor(image);     // detected primary colour for the fill swatch
+      drawMode = false; zone.classList.remove('drawing');   // never load straight into draw mode
       if (restore) {                   // reload of the saved map → restore the saved settings
         restoreManual();
+        if (drawnCell && localStorage.getItem('gridmap:drawn') === '1') applyDrawnCell();   // re-tile the saved drawn cell
         syncToggles(); refreshFill(); syncFillMode();
       } else {                         // fresh import → detected defaults + smart fix-edges
-        manual = false; gCols = loaded.cols; gRows = loaded.rows; offX = 0; offY = 0;
+        manual = false; drawnCell = null; gCols = loaded.cols; gRows = loaded.rows; offX = 0; offY = 0;
         applyAutoFix();                // smart fix-edges default (+ syncToggles + refreshFill)
       }
       syncAutoMode();
@@ -1075,7 +1201,7 @@
     if (importBtn) importBtn.addEventListener('click', () => input.click());
     const ZOOM_CLICK_STEP = 25;   // Ctrl+LMB / Ctrl+RMB zoom step (centred), in %
     zone.addEventListener('click', (e) => {
-      if (selecting || blockZoneClick) return;
+      if (selecting || drawMode || blockZoneClick) return;
       if (!loaded) { input.click(); return; }                                   // empty zone → browse for an image
       if (e.ctrlKey || e.metaKey) { zoomAt(e.clientX, e.clientY, ZOOM_CLICK_STEP); return; }   // Ctrl+LMB → zoom in (toward cursor)
       zone.classList.toggle('grid-on');                                         // plain LMB → toggle the detected grid
@@ -1103,7 +1229,8 @@
       fillTransparent = $('fillTransparent'), fillColor = $('fillColor');
     const nightToggle = $('nightToggle'), nightColorRow = $('nightColorRow'), nightSwatch = $('nightSwatch'), nightInput = $('nightInput'),
       potencyRow = $('potencyRow'), nightPotencySlider = $('nightPotency');
-    const autoBtn = $('autoBtn'), selectBtn = $('selectBtn'), randomBtn = $('randomBtn'), cellBtn = $('cellBtn'),
+    const autoBtn = $('autoBtn'), selectBtn = $('selectBtn'), randomBtn = $('randomBtn'), cellBtn = $('cellBtn'), drawBtn = $('drawBtn'),
+      drawCoordsWrap = $('drawCoordsWrap'), drawCoords = $('drawCoords'), cellX = $('cellX'), cellY = $('cellY'), cellSize = $('cellSize'),
       colVal = $('colVal'), rowVal = $('rowVal'), calcSize = $('calcSize'), calcVal = $('calcVal'), outVal = $('outVal');
     const fixEdges = true;   // edge-fixing is always on (toggle removed)
     let edgeMode = 'crop', fillOverride = '', fillMode = 'vibrant';
@@ -1116,9 +1243,11 @@
     let panX = 0, panY = 0;     // pan offset (px) of the zoomed map within the viewport (left-drag)
     let trimRect = null;        // kept-region rect in canvas-buffer px (set by renderDisplay; for edge hit-testing)
     let showDelim = false;      // whether the cyan delimiter box is shown (MANUAL / CROP modes)
+    let delimGrips = true;      // draw the chevron drag-grips on the delimiter (off in draw mode — the box is just a boundary marker there)
     let trimGeom = null;        // MANUAL buffer↔image mapping {ux0,uy0,scale,baseX,baseY,cellW,cellH} for edge drags
     let selecting = false, regions = [], dragStart = null, dragRect = null, blockZoneClick = false;  // region-pick mode
     let cellMode = false;   // "4 cells" sub-mode of selecting: one box → cell-size-seeded detection
+    let drawMode = false, drawnCell = null, cellDrag = null;   // DRAW CELL: one user-drawn cell tiled into a grid (drawnCell in image px)
     try {
       if (localStorage.getItem('gridmap:edgeMode') === 'expand') edgeMode = 'expand';
       const fm = localStorage.getItem('gridmap:fillMode'); if (fm === 'solid' || fm === 'transparent') fillMode = fm;
@@ -1257,10 +1386,13 @@
       };
     }
     function syncAutoMode() {
-      // AUTO lit on the auto-detected grid; SELECT / 4-CELLS lit while picking
-      if (autoBtn) autoBtn.classList.toggle('active', !manual && !selecting);
+      // AUTO lit on the auto-detected grid; SELECT / 4-CELLS lit while picking; DRAW CELL lit while drawing
+      if (autoBtn) autoBtn.classList.toggle('active', !manual && !selecting && !drawMode);
       if (selectBtn) selectBtn.classList.toggle('active', selecting && !cellMode);
       if (cellBtn) cellBtn.classList.toggle('active', selecting && cellMode);
+      if (drawBtn) drawBtn.classList.toggle('active', drawMode);
+      if (drawCoordsWrap) { drawCoordsWrap.classList.toggle('open', drawMode); drawCoordsWrap.inert = !drawMode; }   // slide the coord sub-panel open only while drawing
+      if (drawMode) syncCoordInputs();
       syncToggles();   // the FILL control is also usable in MANUAL (off-image fill)
     }
     // Re-apply the smart fix-edges default from the DETECTED grid — used on
@@ -1296,6 +1428,8 @@
       save('gridmap:offX', offX); save('gridmap:offY', offY);
       save('gridmap:winC0', winC0); save('gridmap:winR0', winR0);
       save('gridmap:winC1', winC1); save('gridmap:winR1', winR1);
+      save('gridmap:drawn', (loaded && loaded.drawn) ? '1' : '0');
+      try { localStorage.setItem('gridmap:drawnCell', drawnCell ? JSON.stringify(drawnCell) : ''); } catch (e) {}
     }
     function restoreManual() {
       const gi = (k, d) => { const n = parseInt(localStorage.getItem(k), 10); return Number.isFinite(n) ? n : d; };
@@ -1306,13 +1440,15 @@
         offX = gf('gridmap:offX', 0); offY = gf('gridmap:offY', 0);
         winC0 = gi('gridmap:winC0', 0); winR0 = gi('gridmap:winR0', 0);
         winC1 = gi('gridmap:winC1', gCols); winR1 = gi('gridmap:winR1', gRows);
-      } catch (e) { manual = false; gCols = loaded.cols; gRows = loaded.rows; offX = 0; offY = 0; }
+        const dc = JSON.parse(localStorage.getItem('gridmap:drawnCell') || 'null');
+        drawnCell = (dc && dc.w > 0 && dc.h > 0) ? dc : null;
+      } catch (e) { manual = false; gCols = loaded.cols; gRows = loaded.rows; offX = 0; offY = 0; drawnCell = null; }
     }
     // AUTO button: run the default 5-point detection and return to the auto grid.
     function runAuto() {
       if (!loaded) return;
       selecting = false; cellMode = false; regions = []; dragStart = null; dragRect = null;   // leave region-pick
-      zone.classList.remove('selecting');
+      drawMode = false; cellDrag = null; drawnCell = null; zone.classList.remove('selecting', 'drawing');   // leave draw-cell
       detectGrid(null);                             // default quincunx (5-point) detection
       manual = false; offX = 0; offY = 0;
       gCols = loaded.cols; gRows = loaded.rows;
@@ -1336,7 +1472,7 @@
     function runRandom() {
       if (!loaded) return;
       selecting = false; cellMode = false; regions = []; dragStart = null; dragRect = null;   // leave region-pick
-      zone.classList.remove('selecting');
+      drawMode = false; cellDrag = null; drawnCell = null; zone.classList.remove('selecting', 'drawing');   // leave draw-cell
       detectGrid(randomRegions(3));
       manual = false; offX = 0; offY = 0;
       gCols = loaded.cols; gRows = loaded.rows;
@@ -1345,6 +1481,213 @@
     }
     if (randomBtn) randomBtn.addEventListener('click', runRandom);
 
+    // ---- DRAW CELL: define the grid from ONE user-drawn cell, tiled in all
+    // directions. Unlike the detectors this is fully manual. Cells are kept
+    // SQUARE (in image px); the cell stays adjustable: drag its interior to move
+    // the grid, an edge or corner to resize it, and the grid re-tiles live. The
+    // resulting geometry is written into `loaded` in the SAME shape the detectors
+    // produce, so crop/expand, fill, night-tint, the readout, and PNG export all
+    // just work.
+    const MIN_DRAW_CELL = 8;      // smallest cell side we'll accept (image px)
+    const MAX_DRAW_LINES = 400;   // cap cells/side so a tiny cell can't spawn a runaway grid
+    // Enforce a SQUARE cell (and the min / runaway-grid bound): the side is the
+    // larger of the two dimensions, so resizing one axis squares up the other.
+    function clampDrawnCell(c) {
+      const nW = loaded.image.naturalWidth, nH = loaded.image.naturalHeight;
+      const min = Math.max(MIN_DRAW_CELL, Math.max(nW, nH) / MAX_DRAW_LINES);
+      const side = Math.max(min, c.w, c.h);
+      c.w = side; c.h = side;
+      return c;
+    }
+    function applyDrawnCell() {
+      if (!loaded || !drawnCell) return;
+      const nW = loaded.image.naturalWidth, nH = loaded.image.naturalHeight;
+      const cellW = drawnCell.w, cellH = drawnCell.h;
+      const wrap = (o, f) => ((o % f) + f) % f;   // grid phase is periodic — keep it in [0, cell)
+      loaded.cols = Math.max(1, Math.round(nW / cellW));
+      loaded.rows = Math.max(1, Math.round(nH / cellH));
+      loaded.vFrac = cellW / nW; loaded.hFrac = cellH / nH;
+      loaded.vOff = wrap(drawnCell.x / nW, loaded.vFrac);   // line through the cell's left edge, tiled
+      loaded.hOff = wrap(drawnCell.y / nH, loaded.hFrac);   // …and its top edge
+      loaded.estimated = false; loaded.confidence = 1; loaded.drawn = true;
+      manual = false; offX = 0; offY = 0;
+      gCols = loaded.cols; gRows = loaded.rows;
+    }
+    function enterDraw() {
+      if (!loaded) return;
+      selecting = false; cellMode = false; regions = []; dragStart = null; dragRect = null;   // leave region-pick
+      zone.classList.remove('selecting');
+      drawMode = true; cellDrag = null;
+      zone.classList.add('drawing');
+      zone.classList.remove('grid-on');
+      syncAutoMode(); renderDisplay();
+    }
+    function exitDraw() {                          // keep the tiled grid; return to the normal view
+      drawMode = false; cellDrag = null;
+      zone.classList.remove('drawing');
+      syncAutoMode(); renderDisplay();
+    }
+    if (drawBtn) drawBtn.addEventListener('click', () => { if (!loaded) return; drawMode ? exitDraw() : enterDraw(); });
+
+    // ---- DRAW CELL sub-panel: precise X/Y (top-left) + square size, in image px.
+    // Editing a field re-tiles live; dragging the cell writes the values back. The
+    // field the user is typing in is left alone (force=true snaps it on blur).
+    // Values may be fractional (sub-pixel) — display is trimmed to 2 decimals. ----
+    const fmtCoord = (v) => String(Math.round(v * 100) / 100);
+    function syncCoordInputs(force) {
+      if (!cellX) return;
+      const focused = document.activeElement, has = !!drawnCell;
+      [cellX, cellY, cellSize].forEach((inp) => { if (inp) inp.disabled = !has; });
+      if (drawCoords) drawCoords.querySelectorAll('.coord-btn').forEach((b) => { b.disabled = !has; });
+      const set = (inp, val) => { if (inp && (force || inp !== focused)) inp.value = val; };
+      if (has) { set(cellX, fmtCoord(drawnCell.x)); set(cellY, fmtCoord(drawnCell.y)); set(cellSize, fmtCoord(drawnCell.w)); }
+      else { set(cellX, ''); set(cellY, ''); set(cellSize, ''); }
+    }
+    function applyCoordInputs() {
+      if (!loaded || !drawnCell) return;
+      const nW = loaded.image.naturalWidth, nH = loaded.image.naturalHeight;
+      let x = parseFloat(cellX.value), y = parseFloat(cellY.value), s = parseFloat(cellSize.value);
+      if (!Number.isFinite(x)) x = drawnCell.x;
+      if (!Number.isFinite(y)) y = drawnCell.y;
+      if (!Number.isFinite(s)) s = drawnCell.w;
+      x = Math.max(0, Math.min(nW, x)); y = Math.max(0, Math.min(nH, y));
+      s = Math.min(Math.min(nW, nH), Math.max(1, s));
+      drawnCell = clampDrawnCell({ x: x, y: y, w: s, h: s });
+      applyDrawnCell();
+      renderDrawView();   // re-tiles + repaints; syncs the non-focused inputs
+    }
+    [cellX, cellY, cellSize].forEach((inp) => {
+      if (!inp) return;
+      inp.addEventListener('input', applyCoordInputs);
+      inp.addEventListener('change', () => { applyCoordInputs(); syncCoordInputs(true); });   // snap to the clamped value on blur/enter
+    });
+    // Custom ▲▼ stepper arrows: nudge a field by ±1 px (keeping any fractional part),
+    // then apply + snap to the clamped value.
+    function stepCoord(inp, delta) {
+      if (!inp || inp.disabled || !drawnCell) return;
+      const cur = parseFloat(inp.value);
+      inp.value = fmtCoord((Number.isFinite(cur) ? cur : 0) + delta);
+      applyCoordInputs(); syncCoordInputs(true);
+    }
+    if (drawCoords) drawCoords.addEventListener('click', (e) => {
+      const btn = e.target.closest('.coord-btn'); if (!btn) return;
+      stepCoord($(btn.dataset.target), parseInt(btn.dataset.delta, 10));
+    });
+
+    // The image's top-left within the draw-view buffer (buffer px) + the buffer's
+    // image-px→buffer-px scale. In CROP the buffer is the full image (origin 0,0);
+    // in EXPAND it's the padded output, so the image is inset by the pad. Shared
+    // by the cell-drawing, hit-testing, and screen→image mapping below.
+    let drawImgOX = 0, drawImgOY = 0, drawBufScale = 1;
+    // Screen px → image px, accounting for the image's offset within the buffer.
+    function evToDrawImage(e) {
+      const nW = loaded.image.naturalWidth, nH = loaded.image.naturalHeight;
+      const r = mapC.getBoundingClientRect();
+      const bx = (e.clientX - r.left) * (mapC.width / r.width);     // screen → buffer px
+      const by = (e.clientY - r.top) * (mapC.height / r.height);
+      const ix = (bx - drawImgOX) / drawBufScale, iy = (by - drawImgOY) / drawBufScale;
+      return { x: Math.max(0, Math.min(nW, ix)), y: Math.max(0, Math.min(nH, iy)) };
+    }
+    // Hit-test the editable cell in SCREEN px: returns the grabbed edge(s) when
+    // near an edge line, else {inside:true} when over the cell body, else null.
+    function cellHitAt(cx, cy) {
+      if (!drawnCell || !mapC.width) return null;
+      const r = mapC.getBoundingClientRect();
+      const kx = r.width / mapC.width, ky = r.height / mapC.height;   // buffer px → screen px
+      const bx = drawImgOX + drawnCell.x * drawBufScale, by = drawImgOY + drawnCell.y * drawBufScale;
+      const X = r.left + bx * kx, Y = r.top + by * ky;
+      const X2 = X + drawnCell.w * drawBufScale * kx, Y2 = Y + drawnCell.h * drawBufScale * ky;
+      const inX = cx >= X - EDGE_GRAB && cx <= X2 + EDGE_GRAB;
+      const inY = cy >= Y - EDGE_GRAB && cy <= Y2 + EDGE_GRAB;
+      const ed = { l: inY && Math.abs(cx - X) <= EDGE_GRAB, r: inY && Math.abs(cx - X2) <= EDGE_GRAB,
+                   t: inX && Math.abs(cy - Y) <= EDGE_GRAB, b: inX && Math.abs(cy - Y2) <= EDGE_GRAB };
+      if (ed.l || ed.r || ed.t || ed.b) return { edges: ed };
+      if (cx > X && cx < X2 && cy > Y && cy < Y2) return { inside: true };
+      return null;
+    }
+    // The magenta editable-cell rectangle (image px → buffer px, offset by the
+    // image origin within the buffer), with corner grips.
+    function drawCellRect(g, cell, scale, ox, oy, withGrips) {
+      const x = ox + cell.x * scale, y = oy + cell.y * scale, w = cell.w * scale, h = cell.h * scale;
+      g.save();
+      g.fillStyle = 'rgba(255,0,60,0.16)'; g.fillRect(x, y, w, h);
+      g.strokeStyle = 'rgba(255,0,60,0.95)'; g.lineWidth = 2;
+      g.strokeRect(Math.round(x) + 0.5, Math.round(y) + 0.5, Math.round(w), Math.round(h));
+      if (withGrips) {
+        const s = 5; g.fillStyle = 'rgba(255,0,60,0.95)';
+        [[x, y], [x + w, y], [x, y + h], [x + w, y + h]].forEach(([gx, gy]) => g.fillRect(gx - s, gy - s, s * 2, s * 2));
+      }
+      g.restore();
+    }
+    function drawDrawHint(g, dW, dH) {            // centred instruction shown before the first cell exists
+      g.save();
+      g.fillStyle = 'rgba(0,240,255,0.92)';
+      g.font = '700 ' + Math.max(13, Math.round(dW * 0.02)) + 'px "JetBrains Mono", monospace';
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(t('hint_draw'), dW / 2, dH / 2);
+      g.restore();
+    }
+    // Tiled grid + editable cell on the overlay. EXPAND maps the padded output
+    // (L fracs across the whole buffer); CROP maps the full image (view() fracs).
+    function drawCellOverlay(L, bufW, bufH, scale, ox, oy) {
+      if (drawnCell) {
+        if (L && L.expand) drawGrid(L.vFrac, L.vOff, L.hFrac, L.hOff, bufW, bufH);
+        else { const v = view(); drawGrid(v.vFrac, v.vOff, v.hFrac, v.hOff, bufW, bufH); }
+      } else { gridC.width = bufW; gridC.height = bufH; gridC.getContext('2d').clearRect(0, 0, bufW, bufH); }
+      const g = gridC.getContext('2d');
+      if (cellDrag && cellDrag.rect) drawCellRect(g, cellDrag.rect, scale, ox, oy, false);   // freehand draw of a fresh cell
+      else if (drawnCell) drawCellRect(g, drawnCell, scale, ox, oy, true);
+      else drawDrawHint(g, bufW, bufH);
+    }
+    // DRAW CELL view: the SAME crop/expand base render as the normal view (so the
+    // edges mode is visible while drawing) + the tiled grid + the editable cell.
+    function renderDrawView() {
+      const image = loaded.image, nW = image.naturalWidth, nH = image.naturalHeight;
+      showDelim = false; trimRect = null; trimGeom = null;
+      // No cell yet (or mid-draw of a fresh one): plain full image — there's no
+      // grid to crop/expand, and this keeps a clean screen↔image mapping.
+      if (!drawnCell) {
+        const scale = Math.min(1, DISPLAY_MAX / Math.max(nW, nH));
+        const dW = Math.max(1, Math.round(nW * scale)), dH = Math.max(1, Math.round(nH * scale));
+        mapC.width = dW; mapC.height = dH;
+        const ctx = mapC.getContext('2d');
+        ctx.drawImage(image, 0, 0, dW, dH); tintCanvas(ctx, 0, 0, dW, dH);
+        dispScale = scale; drawImgOX = 0; drawImgOY = 0; drawBufScale = scale;
+        drawCellOverlay(null, dW, dH, scale, 0, 0);
+        if (calcVal) calcVal.textContent = '??×??'; if (outVal) outVal.textContent = '??×?? PX';
+        syncCoordInputs();
+        applyZoom();
+        return;
+      }
+      saveManual();
+      const L = computeLayout();   // respects the CROP/EXPAND edges mode (manual is false here)
+      if (edgeMode === 'crop' && L.src) {
+        // CROP: full image with the cropped-away margins greyed (matches the export crop)
+        const scale = Math.min(1, DISPLAY_MAX / Math.max(nW, nH));
+        const dW = Math.max(1, Math.round(nW * scale)), dH = Math.max(1, Math.round(nH * scale));
+        mapC.width = dW; mapC.height = dH;
+        const ctx = mapC.getContext('2d');
+        ctx.drawImage(image, 0, 0, dW, dH);
+        const kx = L.src.x * scale, ky = L.src.y * scale, kw = L.src.w * scale, kh = L.src.h * scale;
+        ctx.fillStyle = 'rgba(8,8,10,0.64)';
+        ctx.fillRect(0, 0, dW, ky); ctx.fillRect(0, ky + kh, dW, dH - (ky + kh));
+        ctx.fillRect(0, ky, kx, kh); ctx.fillRect(kx + kw, ky, dW - (kx + kw), kh);
+        tintCanvas(ctx, kx, ky, kw, kh);
+        dispScale = scale; drawImgOX = 0; drawImgOY = 0; drawBufScale = scale;
+        // cyan boundary box around the kept region (no drag-grips — adjust via the cell)
+        trimRect = { x: kx, y: ky, w: kw, h: kh }; showDelim = true; delimGrips = false;
+        drawCellOverlay(L, dW, dH, scale, 0, 0);
+      } else {
+        // EXPAND (padded output): paint the real result; the image is inset by the pad
+        const scale = Math.min(1, DISPLAY_MAX / Math.max(L.outW, L.outH));
+        const { w: dW, h: dH } = paint(mapC, L, scale);
+        const ox = L.expand ? Math.round(L.dx * scale) : 0, oy = L.expand ? Math.round(L.dy * scale) : 0;
+        dispScale = scale; drawImgOX = ox; drawImgOY = oy; drawBufScale = scale;
+        drawCellOverlay(L, dW, dH, scale, ox, oy);
+      }
+      syncCoordInputs();
+      setReadout(L.cols, L.rows, L.outW, L.outH);
+    }
 
     syncToggles();
     refreshFill();
@@ -1502,6 +1845,7 @@
       ctx.strokeStyle = 'rgba(0,240,255,0.95)';
       ctx.lineWidth = 3; ctx.lineJoin = 'miter';
       ctx.strokeRect(x, y, w, h);
+      if (!delimGrips) return;   // draw mode: just the boundary box, no drag-grips
       ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
       // Chevrons straddle their edge line; the overlay is padded beyond the map
       // (see drawTrimOverlay) so the outward half stays on-canvas at the border.
@@ -1566,6 +1910,7 @@
     function renderDisplay() {
       if (!loaded) return;
       if (selecting) { renderSelectView(); return; }   // region-pick mode draws its own view
+      if (drawMode) { renderDrawView(); return; }       // draw-cell mode draws its own view
       saveManual();   // keep the MANUAL state in localStorage in sync with the view
       const image = loaded.image, nW = image.naturalWidth, nH = image.naturalHeight;
       const L = computeLayout();
@@ -1592,7 +1937,7 @@
         if (fillMode === 'transparent') ctx.clearRect(wX, wY, off.width, off.height);   // reveal the checkerboard through transparent padding
         ctx.drawImage(off, wX, wY);
         const cellW = L.win.w / (winC1 - winC0), cellH = L.win.h / (winR1 - winR0);
-        trimRect = { x: wX, y: wY, w: off.width, h: off.height }; showDelim = true;   // delimiter drawn on the overlay
+        trimRect = { x: wX, y: wY, w: off.width, h: off.height }; showDelim = true; delimGrips = true;   // draggable delimiter
         trimGeom = { ux0: ux0, uy0: uy0, scale: scale, cellW: cellW, cellH: cellH,
           baseX: L.win.x - winC0 * cellW, baseY: L.win.y - winR0 * cellH };
         drawGrid(L.vFrac, L.vOff, L.hFrac, L.hOff, dW, dH, { x: wX, y: wY, w: off.width, h: off.height });
@@ -1613,7 +1958,7 @@
         ctx.fillRect(0, ky, kx, kh);
         ctx.fillRect(kx + kw, ky, dW - (kx + kw), kh);
         tintCanvas(ctx, kx, ky, kw, kh);   // night tint on the kept region (matches the export)
-        trimRect = { x: kx, y: ky, w: kw, h: kh }; trimGeom = null; showDelim = true;   // delimiter drawn on the overlay
+        trimRect = { x: kx, y: ky, w: kw, h: kh }; trimGeom = null; showDelim = true; delimGrips = true;   // draggable delimiter
         const v = view();
         drawGrid(v.vFrac, v.vOff, v.hFrac, v.hOff, dW, dH);
         setReadout(L.cols, L.rows, L.outW, L.outH);
@@ -1776,11 +2121,13 @@
     }
     function enterSelect() {
       selecting = true; cellMode = false; regions = []; dragRect = null; dragStart = null;
+      drawMode = false; cellDrag = null; drawnCell = null; zone.classList.remove('drawing');   // leave draw-cell
       zone.classList.add('selecting');
       syncAutoMode(); renderDisplay();
     }
     function enterCellSelect() {                 // "4 cells": drag one box around a 2×2 block
       selecting = true; cellMode = true; regions = []; dragRect = null; dragStart = null;
+      drawMode = false; cellDrag = null; drawnCell = null; zone.classList.remove('drawing');   // leave draw-cell
       zone.classList.add('selecting');
       syncAutoMode(); renderDisplay();
     }
@@ -1875,13 +2222,19 @@
       renderDisplay();
     }
     canvasWrap.addEventListener('mousedown', (e) => {
-      if (selecting || !loaded || e.button !== 0 || e.ctrlKey || e.metaKey) return;
+      if (selecting || drawMode || !loaded || e.button !== 0 || e.ctrlKey || e.metaKey) return;
       const ed = trimEdgesAt(e.clientX, e.clientY);
       if (ed) { trimDrag = { edges: ed, x: e.clientX, y: e.clientY, started: false }; e.preventDefault(); return; }
       panStart = { x: e.clientX, y: e.clientY, px: panX, py: panY };
       panMoved = false;
     });
     canvasWrap.addEventListener('mousemove', (e) => {   // hover affordance: resize cursor over an edge
+      if (drawMode) {                                   // draw-cell: move/resize cursor over the cell, crosshair elsewhere
+        if (cellDrag || !loaded) return;
+        const hit = cellHitAt(e.clientX, e.clientY);
+        canvasWrap.style.cursor = hit ? (hit.inside ? 'move' : trimCursor(hit.edges)) : 'crosshair';
+        return;
+      }
       if (trimDrag || panStart || selecting || !loaded) return;
       const ed = trimEdgesAt(e.clientX, e.clientY);
       canvasWrap.style.cursor = ed ? trimCursor(ed) : '';
@@ -1925,7 +2278,58 @@
       panStart = null; canvasWrap.style.cursor = '';
       if (panMoved) { blockZoneClick = true; setTimeout(() => { blockZoneClick = false; }, 0); }   // swallow the trailing click (keep grid state)
     });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && selecting) exitSelect(); });
+
+    // ---- DRAW CELL drag: draw a fresh cell on empty space, move the cell from
+    // its interior, or resize it by an edge/corner. Every change re-tiles live. ----
+    canvasWrap.addEventListener('mousedown', (e) => {
+      if (!drawMode || e.button !== 0) return;
+      e.preventDefault();
+      if (document.activeElement && document.activeElement.classList.contains('coord-input')) document.activeElement.blur();   // let a drag write all fields live
+      const p = evToDrawImage(e), hit = cellHitAt(e.clientX, e.clientY);
+      if (hit && hit.edges) cellDrag = { mode: 'resize', edges: hit.edges, orig: Object.assign({}, drawnCell) };
+      else if (hit && hit.inside) cellDrag = { mode: 'move', start: p, orig: Object.assign({}, drawnCell) };
+      else cellDrag = { mode: 'new', start: p, rect: { x: p.x, y: p.y, w: 0, h: 0 } };
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (!drawMode || !cellDrag) return;
+      e.preventDefault();
+      const p = evToDrawImage(e);
+      if (cellDrag.mode === 'new') {            // square: the side follows the larger drag delta
+        const dx = p.x - cellDrag.start.x, dy = p.y - cellDrag.start.y, side = Math.max(Math.abs(dx), Math.abs(dy));
+        cellDrag.rect = { x: dx < 0 ? cellDrag.start.x - side : cellDrag.start.x,
+                          y: dy < 0 ? cellDrag.start.y - side : cellDrag.start.y, w: side, h: side };
+      } else if (cellDrag.mode === 'move') {
+        const o = cellDrag.orig;
+        drawnCell = { x: o.x + (p.x - cellDrag.start.x), y: o.y + (p.y - cellDrag.start.y), w: o.w, h: o.h };
+        applyDrawnCell();
+      } else {   // resize — kept SQUARE; the fixed (opposite) edges anchor the cell
+        const o = cellDrag.orig, ed = cellDrag.edges;
+        let x0 = o.x, y0 = o.y, x1 = o.x + o.w, y1 = o.y + o.h;
+        if (ed.l) x0 = p.x; if (ed.r) x1 = p.x; if (ed.t) y0 = p.y; if (ed.b) y1 = p.y;
+        const w = Math.abs(x1 - x0), h = Math.abs(y1 - y0), horiz = ed.l || ed.r, vert = ed.t || ed.b;
+        const side = (horiz && vert) ? Math.max(w, h) : (horiz ? w : h);   // corner: larger axis; edge: that axis
+        const ax = ed.l ? Math.max(x0, x1) : Math.min(x0, x1);   // left moving → anchor the right edge
+        const ay = ed.t ? Math.max(y0, y1) : Math.min(y0, y1);   // top moving → anchor the bottom edge
+        drawnCell = clampDrawnCell({ x: ed.l ? ax - side : ax, y: ed.t ? ay - side : ay, w: side, h: side });
+        applyDrawnCell();
+      }
+      renderDrawView();
+    });
+    window.addEventListener('mouseup', (e) => {
+      if (!drawMode || !cellDrag) return;
+      const cd = cellDrag; cellDrag = null;
+      blockZoneClick = true; setTimeout(() => { blockZoneClick = false; }, 0);
+      if (cd.mode === 'new') {
+        const r = cd.rect;
+        if (r.w > MIN_DRAW_CELL && r.h > MIN_DRAW_CELL) { drawnCell = clampDrawnCell(r); applyDrawnCell(); }
+      }
+      canvasWrap.style.cursor = '';
+      syncAutoMode(); renderDrawView();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      if (drawMode) exitDraw(); else if (selecting) exitSelect();
+    });
 
     // Restore the previously loaded map (re-runs analysis + overlay).
     IDB.get().then((blob) => { if (blob) load(blob, false); }).catch(() => {});

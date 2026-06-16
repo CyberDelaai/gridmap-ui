@@ -15,6 +15,9 @@ the cell count. No build step, no backend — just open `index.html`.
   map to reveal the detected grid as an overlay so you can sanity-check it.
 - **Auto-estimate** — when an image has no clear grid, GRIDMAP estimates the most
   likely cell count instead (shown as `≈ NN × MM`).
+- **Draw a cell** — when detection won't cooperate, draw one square cell by hand
+  and GRIDMAP tiles it across the whole map. The cell stays adjustable — drag it
+  to move the grid, or an edge/corner to resize.
 
 ## How detection works
 

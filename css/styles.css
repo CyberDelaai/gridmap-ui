@@ -1,0 +1,359 @@
+  :root {
+    --yellow: #fcee0a;
+    --cyan: #00f0ff;
+    --magenta: #ff003c;
+    --bg: #050507;
+    --panel: #0b0b10;
+    --panel-2: #14141c;
+    --text: #e8e8ee;
+    --dim: #7a7a88;
+    --accent: #fcee0a;
+    --accent-rgb: 252,238,10;
+    --main: #00f0ff;
+    --main-rgb: 0,240,255;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    min-height: 100vh;
+    padding: 28px 18px 64px;
+    background-image: repeating-linear-gradient(0deg, rgba(var(--main-rgb),0.03) 0 1px, transparent 1px 3px);
+  }
+  .app { max-width: 1800px; margin: 0 auto; }
+
+  /* ---------- Header (ported from chronos/commlink) ---------- */
+  header.top {
+    display: flex; align-items: center; gap: 18px;
+    border-bottom: 1px solid rgba(252,238,10,0.25); padding-bottom: 16px; margin-bottom: 22px;
+  }
+  .logo-menu { position: relative; }
+  .logo {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--yellow); font-size: 22px; letter-spacing: 2px; font-weight: 700;
+    background: none; border: none; cursor: pointer; transition: filter .15s;
+  }
+  .logo:hover { filter: drop-shadow(0 0 6px rgba(var(--accent-rgb),0.6)); }
+  .logo .chev { display: inline-block; transition: transform .2s ease; }
+  .logo[aria-expanded="true"] .chev { transform: rotate(90deg); }
+  .tag {
+    color: var(--cyan); font-size: 12px; letter-spacing: 1px;
+    border-left: 1px solid var(--dim); padding-left: 18px;
+  }
+  .tag .tag-meta { cursor: default; color: var(--cyan); }
+  .lang-select {
+    background: var(--panel); color: var(--main);
+    border: 1px solid rgba(var(--main-rgb),0.4);
+    padding: 6px 10px; font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; cursor: pointer;
+  }
+  header.top .lang-select { margin-left: auto; }
+  .app-menu {
+    position: absolute; top: calc(100% + 12px); left: 0; z-index: 30;
+    display: flex; flex-direction: column; gap: 4px;
+    min-width: 240px; padding: 12px 14px;
+    background: var(--panel);
+    --aug-border-all: 1px; --aug-border-bg: rgba(var(--main-rgb),0.5);
+    --aug-tl: 10px; --aug-br: 10px;
+  }
+  .app-menu[hidden] { display: none; }
+  .app-menu-item {
+    font-size: 16px; letter-spacing: 2px;
+    color: var(--yellow); text-decoration: none; white-space: nowrap;
+    padding: 6px 8px; transition: color .12s, background .12s;
+  }
+  .app-menu-item:hover { background: rgba(var(--main-rgb),0.12); color: var(--accent); }
+  .app-menu-item.current { color: var(--main); cursor: default; }
+  .app-menu-item.current:hover { background: none; }
+  .glitchable { display: inline-block; white-space: pre; }
+  .glitchable.glitching {
+    color: var(--yellow);
+    text-shadow: 2px 0 var(--cyan), -2px 0 var(--magenta);
+    animation: tagGlitchJitter 0.08s steps(2) infinite;
+  }
+  @keyframes tagGlitchJitter {
+    0%, 100% { transform: translate(0, 0); }
+    25% { transform: translate(-1px, 1px); }
+    50% { transform: translate(1px, -1px); }
+    75% { transform: translate(-1px, -1px); }
+  }
+
+  /* ---------- Layout: config left + right, working area center ---------- */
+  .layout { display: flex; gap: 22px; align-items: stretch; }
+  .config {
+    width: 340px; flex-shrink: 0; padding: 16px 16px 22px;
+    background: var(--panel);
+    --aug-border-all: 1px; --aug-border-bg: rgba(var(--main-rgb),0.35);
+    --aug-tl: 12px; --aug-br: 12px;
+    align-self: flex-start;
+  }
+  .config h2 {
+    font-size: 13px; letter-spacing: 2px; color: var(--dim);
+    text-transform: uppercase; font-weight: 700; margin-bottom: 12px;
+  }
+  .config .hint { color: var(--dim); font-size: 12px; line-height: 1.6; }
+  /* PNG export button — same look as chronos/commlink (.btn) */
+  .btn {
+    --btn-color: var(--accent);
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    height: 44px; padding: 0 16px;
+    background: transparent; color: var(--btn-color);
+    font-family: 'JetBrains Mono', monospace; font-size: 14px; line-height: 1;
+    letter-spacing: 3px; text-transform: uppercase; cursor: pointer; border: none;
+    transition: background .15s, color .15s, box-shadow .15s, opacity .15s;
+    --aug-border-all: 1px; --aug-border-bg: var(--btn-color);
+    --aug-inlay-all: 0px; --aug-inlay-bg: transparent;
+    --aug-tl: 12px; --aug-br: 12px;
+  }
+  .btn:hover { background: color-mix(in srgb, var(--btn-color) 22%, transparent); box-shadow: 0 0 12px color-mix(in srgb, var(--btn-color) 45%, transparent); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; background: transparent; box-shadow: none; }
+  .config .export-btn { width: 100%; margin-top: 16px; }
+  .config .copy-btn { --btn-color: var(--main); width: 100%; margin-top: 8px; }
+  .config .import-btn { --btn-color: var(--main); width: 100%; margin-top: 4px; margin-bottom: 12px;}
+  /* Sliding two-state toggle — ported from chronos/commlink .side-switch */
+  .fx-toggle { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; }
+  .fx-label { font-size: 12px; letter-spacing: 1.5px; color: var(--main); text-transform: uppercase; }
+  .side-switch {
+    position: relative; height: 30px; width: 112px; background: var(--panel);
+    border: 1px solid rgba(var(--main-rgb), 0.3); cursor: pointer;
+    display: flex; align-items: stretch; overflow: hidden; flex-shrink: 0;
+    font-family: 'JetBrains Mono', monospace; transition: border-color .15s;
+  }
+  .side-switch:hover { border-color: var(--main); }
+  .side-switch .thumb {
+    position: absolute; top: 0; left: 0; width: 50%; height: 100%;
+    background: color-mix(in srgb, var(--main) 22%, transparent);
+    transition: transform .22s cubic-bezier(.4, 0, .2, 1); z-index: 0;
+  }
+  .side-switch[data-pos="right"] .thumb { transform: translateX(100%); }
+  .side-switch .lab {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; letter-spacing: 1px; z-index: 1; position: relative;
+    pointer-events: none; white-space: nowrap; color: var(--dim); transition: color .15s .08s;
+  }
+  .side-switch[data-pos="left"] .lab.l,
+  .side-switch[data-pos="right"] .lab.r { color: var(--main); }
+  .fx-toggle.disabled { opacity: .4; pointer-events: none; }
+  /* fill-colour swatch: a clickable augmented-ui rectangle hiding a colour input */
+  /* same footprint as a .side-switch toggle (112px); the two mode buttons
+     split it evenly so the fill control lines up with the toggles above it */
+  .fill-group { display: flex; align-items: center; gap: 6px; width: 112px; }
+  .fill-swatch, .fill-vibrant, .fill-transparent {
+    flex: 1; height: 30px; cursor: pointer; border: none; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    --aug-border-all: 1px; --aug-border-bg: rgba(255, 255, 255, 0.3);
+    --aug-tl: 8px; --aug-br: 8px;
+  }
+  /* palette icon centred on the colour swatch; colour set in JS (cyan/yellow for contrast) */
+  .fill-swatch .pick-icon { width: 22px; height: 22px; display: block; pointer-events: none; }
+  /* VIBRANT fill mode: a radial rainbow gradient button (left of the swatch) */
+  .fill-vibrant {
+    background: radial-gradient(circle at 32% 30%, #ff3d81 0%, #ff9e00 30%, #ffe600 48%, #2bd9a0 66%, #38a8ff 82%, #b15cff 100%);
+  }
+  /* TRANSPARENT fill mode: a checkerboard swatch = leave the padding as PNG alpha */
+  .fill-transparent {
+    background-color: #cfcfcf;
+    background-image:
+      linear-gradient(45deg, #8a8a8a 25%, transparent 25%), linear-gradient(-45deg, #8a8a8a 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #8a8a8a 75%), linear-gradient(-45deg, transparent 75%, #8a8a8a 75%);
+    background-size: 10px 10px; background-position: 0 0, 0 5px, 5px -5px, -5px 0;
+  }
+  /* the active fill mode gets a bright border */
+  .fill-swatch.active, .fill-vibrant.active, .fill-transparent.active {
+    --aug-border-bg: var(--main); --aug-border-all: 2px;
+    filter: drop-shadow(0 0 5px rgba(var(--main-rgb), 0.9));
+  }
+  /* preview transparency: checkerboard behind the canvas when transparent fill is active */
+  .dropzone.transp #mapCanvas {
+    background-color: #161616;
+    background-image:
+      linear-gradient(45deg, #262626 25%, transparent 25%), linear-gradient(-45deg, #262626 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #262626 75%), linear-gradient(-45deg, transparent 75%, #262626 75%);
+    background-size: 20px 20px; background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+  }
+  /* the real colour input is off-screen; the swatch opens it via showPicker() */
+  .fill-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  /* faded-edge cyan horizontal divider between config sections */
+  .divider {
+    border: none; height: 1px; margin: 18px 0;
+    background: linear-gradient(90deg, transparent, rgba(var(--main-rgb),0.55), transparent);
+  }
+  /* // POTENCY range slider — cyan thumb on a dim track (matches the toggle footprint) */
+  .potency-slider {
+    -webkit-appearance: none; appearance: none; width: 112px; height: 4px;
+    background: rgba(var(--main-rgb),0.25); cursor: pointer; outline: none; flex-shrink: 0;
+  }
+  .potency-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; width: 12px; height: 16px;
+    background: var(--main); border: none; cursor: pointer;
+  }
+  .potency-slider::-moz-range-thumb {
+    width: 12px; height: 16px; background: var(--main); border: none; border-radius: 0; cursor: pointer;
+  }
+  .potency-slider:hover::-webkit-slider-thumb { box-shadow: 0 0 8px rgba(var(--main-rgb),0.7); }
+  .potency-slider:hover::-moz-range-thumb { box-shadow: 0 0 8px rgba(var(--main-rgb),0.7); }
+  .workspace { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+  /* // GRID panel: the labelled AUTO|MANUAL toggle */
+  .topbar { display: flex; flex-direction: column; gap: 14px; margin-bottom: 14px; padding-top: 4px; }
+  .topbar .fx-toggle { margin-top: 0; }
+  /* // DETECTION: the [AUTO] [SELECT] button pair */
+  .detect-group { display: flex; flex-direction: column; gap: 8px; }
+  .detect-btns { display: flex; gap: 8px; }
+  .detect-btn { flex: 1; min-width: 0; height: 38px; letter-spacing: 2px; white-space: nowrap; }
+  .btn.detect-btn.active { background: color-mix(in srgb, var(--btn-color) 28%, transparent); box-shadow: 0 0 12px color-mix(in srgb, var(--btn-color) 50%, transparent); }
+  /* result readout: // RESULT SIZE label (col 1, left) + the cell count (NN×MM)
+     and the exported pixel size stacked in col 2 (right) */
+  .config .calc-size { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 18px; }
+  .config .calc-size .size-label {
+    font-size: 16px; letter-spacing: 1.5px; font-weight: 700; text-transform: uppercase; color: var(--main);
+  }
+  .config .calc-size .size-vals { display: flex; flex-direction: column; align-items: center; gap: 2px; line-height: 1.15; }
+  .config .calc-size .calc-val { font-size: 24px; font-weight: 700; letter-spacing: 1.5px; color: var(--accent); }
+  .config .calc-size.estimated .calc-val { color: var(--main); }
+  .config .calc-size .out-val { font-size: 14px; letter-spacing: 1px; text-transform: uppercase; color: rgba(var(--main-rgb),0.7); }
+  /* central drop zone / map canvas */
+  .dropzone {
+    flex: 1; min-height: max(440px, calc(100vh - 220px)); position: relative;
+    display: flex; align-items: center; justify-content: center;
+    border: 2px dashed rgba(var(--main-rgb),0.35);
+    background: repeating-linear-gradient(45deg, rgba(var(--main-rgb),0.03) 0 12px, transparent 12px 24px);
+    color: var(--dim); text-align: center; transition: border-color .15s, background .15s;
+    overflow: hidden;
+  }
+  .dropzone.dragover { border-color: var(--accent); background: rgba(var(--accent-rgb),0.06); }
+  .dropzone .placeholder { padding: 24px; font-size: 14px; letter-spacing: 1px; line-height: 1.8; }
+  .dropzone .placeholder b { color: var(--main); }
+  /* Out of flow + centred so the canvas can't stretch the dropzone: the zone
+     stays a fixed viewport (flex:1 / min-height) that clips an over-zoomed map,
+     keeping the zoom fit-calculation measured against a stable size. */
+  .dropzone .canvas-wrap { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; line-height: 0; }
+  .dropzone .canvas-wrap canvas { display: block; }   /* display size is driven by the zoom control */
+  /* footer below the map: left-aligned hint lines + right-aligned zoom control */
+  .canvas-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .canvas-hint { display: flex; flex-direction: column; gap: 2px; color: var(--dim); font-size: 12px; letter-spacing: .5px; line-height: 1.4; opacity: 0; transition: opacity .15s; }
+  .dropzone.has-image ~ .canvas-footer .canvas-hint { opacity: 1; }
+  /* zoom control below the map view */
+  .zoom-bar { align-self: center; display: flex; align-items: center; gap: 10px; }
+  .zoom-btn {
+    width: 34px; height: 30px; display: inline-flex; align-items: center; justify-content: center;
+    background: var(--panel); color: var(--main); cursor: pointer;
+    border: 1px solid rgba(var(--main-rgb),0.4);
+    font-family: 'JetBrains Mono', monospace; font-size: 18px; line-height: 1;
+    transition: background .12s, color .12s, border-color .12s;
+  }
+  .zoom-btn:hover { background: rgba(var(--main-rgb),0.16); color: var(--accent); border-color: var(--main); }
+  .zoom-val { min-width: 4.5ch; text-align: center; color: var(--accent); font-weight: 700; font-size: 13px; letter-spacing: 1px; }
+  .zoom-btn.reset { color: var(--accent); border-color: rgba(var(--accent-rgb),0.4); }
+  .zoom-btn.reset:hover { background: rgba(var(--accent-rgb),0.16); border-color: var(--accent); }
+  /* the grid overlay sits exactly over the map. A left-click on the canvas
+     toggles its persistent state (.grid-on, off by default); hovering the
+     canvas previews the REVERSED state (off→show, on→hide). It is forced on
+     while picking a region. */
+  #gridCanvas {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    pointer-events: none; opacity: 0; transition: opacity .15s;
+  }
+  /* delimiter overlay: drawn at display resolution so the trimmer lines stay
+     crisp even when a low-res map is upscaled into the view */
+  #trimCanvas {
+    position: absolute; pointer-events: none;   /* left/top/size set in JS (overhangs the map) */
+  }
+  .dropzone.grid-on #gridCanvas { opacity: 1; }
+  .dropzone:not(.grid-on):not(.selecting) .canvas-wrap:hover #gridCanvas { opacity: 1; }
+  .dropzone.grid-on:not(.selecting) .canvas-wrap:hover #gridCanvas { opacity: 0; }
+  .dropzone.has-image { border-style: solid; border-color: rgba(var(--main-rgb),0.5); background: #000; }
+  .dropzone.has-image .placeholder { display: none; }
+  .dropzone.has-image .canvas-wrap { display: inline-block; cursor: pointer; }
+  .dropzone.has-image.pannable:not(.selecting) .canvas-wrap { cursor: grab; }   /* grabbing set inline while dragging */
+  /* region-select mode: crosshair + always-visible selection overlay */
+  .dropzone.selecting, .dropzone.selecting .canvas-wrap, .dropzone.selecting canvas { cursor: crosshair; }
+  .dropzone.selecting #gridCanvas { opacity: 1; }
+  /* draw-cell mode: same crosshair when defining a fresh cell + always-on grid.
+     (over an existing cell the JS swaps in move/resize cursors inline) */
+  .dropzone.drawing, .dropzone.drawing .canvas-wrap, .dropzone.drawing canvas { cursor: crosshair; }
+  .dropzone.drawing #gridCanvas { opacity: 1; }
+  /* "PRESS ESC…" banner: shown pinned at the top of the map only while drawing */
+  .draw-banner {
+    position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 6;
+    display: none; padding: 7px 16px; background: rgba(11,11,16,0.92);
+    color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; white-space: nowrap; pointer-events: none;
+    box-shadow: 0 0 14px rgba(0,0,0,0.5);
+    --aug-border-all: 1px; --aug-border-bg: rgba(var(--accent-rgb),0.7); --aug-tl: 8px; --aug-br: 8px;
+  }
+  .dropzone.drawing .draw-banner { display: block; }
+  /* DRAW CELL sub-panel: precise cell X/Y + size inputs, sliding down from the button.
+     The wrapper animates max-height + opacity (collapses fully when closed). The cap
+     just needs to exceed the panel's fixed ~118px height. */
+  .draw-coords-wrap {
+    max-height: 0; opacity: 0; margin-top: 0; overflow: hidden;
+    transition: max-height .26s cubic-bezier(.4,0,.2,1), opacity .2s ease, margin-top .26s cubic-bezier(.4,0,.2,1);
+  }
+  .draw-coords-wrap.open { max-height: 160px; opacity: 1; margin-top: 10px; }
+  .draw-coords {
+    display: flex; flex-direction: column; gap: 8px; padding: 12px;
+    background: var(--panel-2);
+    --aug-border-all: 1px; --aug-border-bg: rgba(var(--main-rgb),0.45); --aug-tl: 8px; --aug-br: 8px;
+  }
+  .coord-title { font-size: 12px; letter-spacing: 2px; color: var(--dim); text-transform: uppercase; }
+  .coord-row { display: flex; align-items: center; gap: 10px; }
+  .coord-field { display: flex; align-items: center; gap: 7px; flex: 1; min-width: 0; }
+  .coord-field label { font-size: 12px; font-weight: 700; letter-spacing: 1px; color: var(--main); min-width: 2.5ch; }
+  .coord-input {
+    width: 100%; min-width: 0; background: var(--panel); color: var(--accent);
+    border: 1px solid rgba(var(--main-rgb),0.4); border-radius: 0;
+    font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; padding: 6px 7px;
+  }
+  .coord-input:disabled { opacity: .4; cursor: not-allowed; }
+  /* hide the native number spinner — the custom ▲▼ stepper replaces it */
+  .coord-input::-webkit-outer-spin-button, .coord-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .coord-input { -moz-appearance: textfield; appearance: textfield; }
+  /* custom stepper (input + stacked arrows), ported from chronos' year picker */
+  .coord-stepper { display: flex; align-items: stretch; flex: 1; min-width: 0; }
+  .coord-stepper .coord-input { border-right: none; }
+  .coord-spin { display: flex; flex-direction: column; flex-shrink: 0; }
+  .coord-btn {
+    flex: 1; width: 22px; cursor: pointer; line-height: 1; padding: 0;
+    background: var(--panel); color: var(--dim);
+    border: 1px solid rgba(var(--main-rgb),0.4); font-size: 8px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .12s, color .12s, border-color .12s;
+  }
+  .coord-btn:hover { background: var(--main); color: var(--bg); border-color: var(--main); }
+  .coord-spin .coord-btn + .coord-btn { border-top: none; }   /* shared middle edge */
+  .coord-btn:disabled { opacity: .4; cursor: not-allowed; }
+  /* single focus ring around the whole stepper (input + arrows) */
+  .coord-stepper :focus { outline: none; }
+  .coord-stepper:focus-within { outline: 2px solid var(--accent); outline-offset: 0; }
+  /* EXPORT → CELL SIZE: VTT-scale preset dropdown + custom px field */
+  .scale-select {
+    background: var(--panel); color: var(--main); border: 1px solid rgba(var(--main-rgb),0.4);
+    padding: 6px 8px; font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+    cursor: pointer; width: 158px;
+  }
+  .scale-select:focus { outline: none; border-color: var(--main); box-shadow: 0 0 6px rgba(var(--main-rgb),0.4); }
+  .scale-custom {
+    width: 158px; background: var(--panel); color: var(--accent);
+    border: 1px solid rgba(var(--main-rgb),0.4);
+    font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700;
+    padding: 6px 7px; text-align: right;
+  }
+  .scale-custom:focus { outline: none; border-color: var(--main); box-shadow: 0 0 6px rgba(var(--main-rgb),0.4); }
+  .scale-custom::-webkit-outer-spin-button, .scale-custom::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .scale-custom { -moz-appearance: textfield; appearance: textfield; }
+
+  @media (max-width: 1100px) {
+    .layout { flex-wrap: wrap; }
+    .config { width: 100%; }
+    .workspace { order: -1; width: 100%; }
+  }
+  /* faint fixed footer stamp (ported from chronos/commlink) */
+  .footer-stamp {
+    position: fixed; left: 0; right: 0; bottom: 6px; z-index: 0;
+    text-align: center; font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.15); pointer-events: none; user-select: none;
+  }

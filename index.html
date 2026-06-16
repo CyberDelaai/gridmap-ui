@@ -1,4 +1,4 @@
-<!-- GRIDMAP v1.3.2 -->
+<!-- GRIDMAP v1.3.3 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -439,7 +439,7 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable" data-i18n="tag">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">1.3.2</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable" data-i18n="tag">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">1.3.3</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
@@ -589,6 +589,15 @@
         <span class="fx-label" data-i18n="l_custompx">// CUSTOM PX:</span>
         <input type="number" id="scaleCustom" class="scale-custom" min="1" max="2000" step="1" inputmode="numeric" aria-label="custom cell pixel size" />
       </div>
+      <!-- SCALING: how the image is resampled when the export is larger than native -->
+      <div class="fx-toggle" id="algoRow">
+        <span class="fx-label" data-i18n="l_algo">// SCALING:</span>
+        <select class="scale-select" id="algoSel" aria-label="upscaling algorithm">
+          <option value="smooth" data-i18n="o_smooth">SMOOTH</option>
+          <option value="nearest" data-i18n="o_nearest">NEAREST · PIXEL</option>
+          <option value="sharp" data-i18n="o_sharp">SHARP · LANCZOS</option>
+        </select>
+      </div>
       <div class="calc-size" id="calcSize">
         <span class="size-label" data-i18n="l_result">// RESULT SIZE:</span>
         <span class="size-vals">
@@ -622,6 +631,7 @@
       hint_draw: 'DRAG TO DRAW ONE CELL',
       b_esc_hint: 'PRESS ESC TO EXIT DRAWING MODE', l_cellcoords: '// CELL · PX', l_cellsize: 'SIZE',
       l_scale: '// CELL SIZE:', l_custompx: '// CUSTOM PX:', o_original: 'ORIGINAL', o_custom: 'CUSTOM…',
+      l_algo: '// SCALING:', o_smooth: 'SMOOTH', o_nearest: 'NEAREST · PIXEL', o_sharp: 'SHARP · LANCZOS',
       ph_title: 'DROP A MAP IMAGE HERE', ph_sub: 'drag & drop · paste · or click to browse',
       ph_desc: 'GRIDMAP reads the grid and reports its NN×MM size',
       hint_toggle: '// Click to toggle detected grid', hint_zoom: '// Ctrl+click to zoom in, Ctrl+right-click to zoom out',
@@ -646,6 +656,7 @@
       hint_draw: 'НАРИСУЙТЕ ОДНУ ЯЧЕЙКУ',
       b_esc_hint: 'НАЖМИТЕ ESC ДЛЯ ВЫХОДА ИЗ РЕЖИМА РИСОВАНИЯ', l_cellcoords: '// ЯЧЕЙКА · PX', l_cellsize: 'РАЗМЕР',
       l_scale: '// РАЗМЕР ЯЧЕЙКИ:', l_custompx: '// СВОЙ PX:', o_original: 'ОРИГИНАЛ', o_custom: 'СВОЙ…',
+      l_algo: '// МАСШТАБ.:',
       ph_title: 'ПЕРЕТАЩИТЕ КАРТУ СЮДА', ph_sub: 'перетащите · вставьте · или нажмите для выбора',
       ph_desc: 'GRIDMAP считывает сетку и показывает размер NN×MM',
       hint_toggle: '// Клик — показать/скрыть сетку', hint_zoom: '// Ctrl+клик — приблизить, Ctrl+ПКМ — отдалить',
@@ -670,6 +681,7 @@
       hint_draw: 'TRACEZ UNE CASE',
       b_esc_hint: 'APPUYEZ SUR ÉCHAP POUR QUITTER LE MODE DESSIN', l_cellcoords: '// CASE · PX', l_cellsize: 'TAILLE',
       l_scale: '// TAILLE CASE :', l_custompx: '// PX PERSO :', o_original: 'ORIGINAL', o_custom: 'PERSO…',
+      l_algo: '// MISE À L\'ÉCHELLE :',
       ph_title: 'DÉPOSEZ UNE CARTE ICI', ph_sub: 'glisser-déposer · coller · ou cliquer pour parcourir',
       ph_desc: 'GRIDMAP lit la grille et indique sa taille NN×MM',
       hint_toggle: '// Cliquez pour afficher/masquer la grille', hint_zoom: '// Ctrl+clic pour zoomer, Ctrl+clic droit pour dézoomer',
@@ -694,6 +706,7 @@
       hint_draw: 'EINE ZELLE AUFZIEHEN',
       b_esc_hint: 'ESC DRÜCKEN, UM DEN ZEICHENMODUS ZU VERLASSEN', l_cellcoords: '// ZELLE · PX', l_cellsize: 'GRÖSSE',
       l_scale: '// ZELLENGRÖSSE:', l_custompx: '// EIGENE PX:', o_original: 'ORIGINAL', o_custom: 'EIGENE…',
+      l_algo: '// SKALIERUNG:',
       ph_title: 'KARTENBILD HIER ABLEGEN', ph_sub: 'ziehen & ablegen · einfügen · oder klicken zum Auswählen',
       ph_desc: 'GRIDMAP liest das Raster und zeigt die Größe NN×MM',
       hint_toggle: '// Klick: erkanntes Raster ein/aus', hint_zoom: '// Strg+Klick zoomt hinein, Strg+Rechtsklick heraus',
@@ -718,6 +731,7 @@
       hint_draw: 'DIBUJA UNA CELDA',
       b_esc_hint: 'PULSA ESC PARA SALIR DEL MODO DIBUJO', l_cellcoords: '// CELDA · PX', l_cellsize: 'TAMAÑO',
       l_scale: '// TAMAÑO CELDA:', l_custompx: '// PX PERSON.:', o_original: 'ORIGINAL', o_custom: 'PERSON.…',
+      l_algo: '// ESCALADO:',
       ph_title: 'SUELTA UN MAPA AQUÍ', ph_sub: 'arrastra y suelta · pega · o haz clic para buscar',
       ph_desc: 'GRIDMAP lee la cuadrícula e indica su tamaño NN×MM',
       hint_toggle: '// Clic para mostrar/ocultar la cuadrícula', hint_zoom: '// Ctrl+clic para acercar, Ctrl+clic derecho para alejar',
@@ -742,6 +756,7 @@
       hint_draw: 'TRACCIA UNA CELLA',
       b_esc_hint: 'PREMI ESC PER USCIRE DALLA MODALITÀ DISEGNO', l_cellcoords: '// CELLA · PX', l_cellsize: 'DIM.',
       l_scale: '// DIM. CELLA:', l_custompx: '// PX PERS.:', o_original: 'ORIGINALE', o_custom: 'PERS.…',
+      l_algo: '// RIDIMENS.:',
       ph_title: 'TRASCINA QUI UNA MAPPA', ph_sub: 'trascina · incolla · o clicca per sfogliare',
       ph_desc: 'GRIDMAP legge la griglia e ne riporta la dimensione NN×MM',
       hint_toggle: '// Clic per mostrare/nascondere la griglia', hint_zoom: '// Ctrl+clic per ingrandire, Ctrl+clic destro per ridurre',
@@ -766,6 +781,7 @@
       hint_draw: 'ドラッグでセルを1つ描く',
       b_esc_hint: 'ESC キーで描画モードを終了', l_cellcoords: '// セル · PX', l_cellsize: 'サイズ',
       l_scale: '// セルサイズ:', l_custompx: '// カスタム PX:', o_original: '元のサイズ', o_custom: 'カスタム…',
+      l_algo: '// 拡大方式:',
       ph_title: 'ここに地図画像をドロップ', ph_sub: 'ドラッグ＆ドロップ・貼り付け・またはクリックで選択',
       ph_desc: 'GRIDMAP がグリッドを読み取り、NN×MM のサイズを表示します',
       hint_toggle: '// クリックでグリッド表示を切替', hint_zoom: '// Ctrl+クリックで拡大、Ctrl+右クリックで縮小',
@@ -790,6 +806,7 @@
       hint_draw: '拖动绘制一个单元格',
       b_esc_hint: '按 ESC 退出绘制模式', l_cellcoords: '// 单元格 · PX', l_cellsize: '尺寸',
       l_scale: '// 单元格尺寸：', l_custompx: '// 自定义 PX：', o_original: '原始', o_custom: '自定义…',
+      l_algo: '// 缩放算法：',
       ph_title: '将地图图像拖到此处', ph_sub: '拖放 · 粘贴 · 或点击浏览',
       ph_desc: 'GRIDMAP 读取网格并报告其 NN×MM 尺寸',
       hint_toggle: '// 点击切换网格显示', hint_zoom: '// Ctrl+点击放大，Ctrl+右键点击缩小',
@@ -888,7 +905,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v1.3.2';
+    const VER = ' // v1.3.3';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 
@@ -1269,7 +1286,7 @@
       fillTransparent = $('fillTransparent'), fillColor = $('fillColor');
     const nightToggle = $('nightToggle'), nightColorRow = $('nightColorRow'), nightSwatch = $('nightSwatch'), nightInput = $('nightInput'),
       potencyRow = $('potencyRow'), nightPotencySlider = $('nightPotency');
-    const scaleSel = $('scaleSel'), scaleCustomRow = $('scaleCustomRow'), scaleCustom = $('scaleCustom');
+    const scaleSel = $('scaleSel'), scaleCustomRow = $('scaleCustomRow'), scaleCustom = $('scaleCustom'), algoSel = $('algoSel');
     const autoBtn = $('autoBtn'), selectBtn = $('selectBtn'), randomBtn = $('randomBtn'), cellBtn = $('cellBtn'), drawBtn = $('drawBtn'),
       drawCoordsWrap = $('drawCoordsWrap'), drawCoords = $('drawCoords'), cellX = $('cellX'), cellY = $('cellY'), cellSize = $('cellSize'),
       colVal = $('colVal'), rowVal = $('rowVal'), calcSize = $('calcSize'), calcVal = $('calcVal'), outVal = $('outVal');
@@ -1290,6 +1307,7 @@
     let cellMode = false;   // "4 cells" sub-mode of selecting: one box → cell-size-seeded detection
     let drawMode = false, drawnCell = null, cellDrag = null;   // DRAW CELL: one user-drawn cell tiled into a grid (drawnCell in image px)
     let exportCellPx = 0, exportCustom = false;   // EXPORT scale: target px per grid cell (0 = native); exportCustom = the CUSTOM… field is the active selector
+    let scaleAlgo = 'smooth';   // EXPORT resampling when enlarging: 'smooth' (canvas hi-q) | 'nearest' (pixel) | 'sharp' (Lanczos-3)
     try {
       if (localStorage.getItem('gridmap:edgeMode') === 'expand') edgeMode = 'expand';
       const fm = localStorage.getItem('gridmap:fillMode'); if (fm === 'solid' || fm === 'transparent') fillMode = fm;
@@ -1303,6 +1321,7 @@
       const ecp = parseInt(localStorage.getItem('gridmap:exportCellPx'), 10);
       if (Number.isFinite(ecp) && ecp > 0) exportCellPx = Math.min(2000, ecp);
       exportCustom = exportCellPx > 0 && (localStorage.getItem('gridmap:exportCustom') === '1' || ![70, 100, 150].includes(exportCellPx));
+      const sa = localStorage.getItem('gridmap:scaleAlgo'); if (sa === 'nearest' || sa === 'sharp' || sa === 'smooth') scaleAlgo = sa;
     } catch (e) { /* storage blocked */ }
     const save = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 
@@ -1422,6 +1441,7 @@
       scaleSel.value = exportCustom ? 'custom' : String(exportCellPx);
       if (scaleCustomRow) scaleCustomRow.hidden = !exportCustom;
       if (exportCustom && scaleCustom && document.activeElement !== scaleCustom) scaleCustom.value = exportCellPx || '';
+      if (algoSel) algoSel.value = scaleAlgo;
     }
     function setExportCellPx(px) {
       exportCellPx = (Number.isFinite(px) && px > 0) ? Math.min(2000, px) : 0;
@@ -1444,6 +1464,13 @@
     if (scaleCustom) scaleCustom.addEventListener('input', () => {
       exportCustom = true;
       setExportCellPx(parseInt(scaleCustom.value, 10));   // don't re-sync (would clobber the field mid-type)
+    });
+    if (algoSel) algoSel.addEventListener('change', () => {
+      const v = algoSel.value;
+      scaleAlgo = (v === 'nearest' || v === 'sharp') ? v : 'smooth';
+      save('gridmap:scaleAlgo', scaleAlgo);
+      // Affects only the (upscaled) export, not the downscaled on-screen preview;
+      // no re-render needed — exportCanvas()/copy read scaleAlgo live.
     });
 
     // ---- AUTO | MANUAL grid mode ----
@@ -1828,6 +1855,95 @@
       ctx.fillRect(x, y, w, h);
       ctx.restore();
     }
+    // ---- EXPORT resampling (// SCALING:) ---------------------------------
+    // The real image content is drawn through drawScaled(), which honours the
+    // chosen algorithm. NEAREST/SMOOTH just toggle the canvas' built-in
+    // resampler; SHARP runs a separable Lanczos-3 resize. Lanczos only kicks in
+    // when actually enlarging — for 1:1 or downscale it falls back to the
+    // canvas hi-q path, which is both faster and better there. The synthetic
+    // fill/pad regions (solid + blurred edge-extend) are NOT routed through
+    // this — they keep the smooth path so the padding still reads soft.
+    const lanczos = (x, a) => {                         // windowed sinc, support ±a
+      if (x === 0) return 1;
+      if (x <= -a || x >= a) return 0;
+      const px = Math.PI * x;
+      return (a * Math.sin(px) * Math.sin(px / a)) / (px * px);
+    };
+    // Per-output-pixel source taps + normalised weights for a 1-D resize.
+    function lanczosWeights(srcLen, dstLen, a) {
+      const ratio = srcLen / dstLen;                    // <1 when enlarging
+      const filtScale = Math.max(1, ratio);             // widen the window when shrinking (anti-alias)
+      const support = a * filtScale;
+      const rows = new Array(dstLen);
+      for (let i = 0; i < dstLen; i++) {
+        const center = (i + 0.5) * ratio - 0.5;
+        const lo = Math.floor(center - support), hi = Math.ceil(center + support);
+        const idx = [], wt = []; let sum = 0;
+        for (let j = lo; j <= hi; j++) {
+          const w = lanczos((center - j) / filtScale, a);
+          if (w === 0) continue;
+          idx.push(Math.min(srcLen - 1, Math.max(0, j)));   // clamp to edge
+          wt.push(w); sum += w;
+        }
+        for (let k = 0; k < wt.length; k++) wt[k] /= sum;   // normalise so brightness is preserved
+        rows[i] = { idx, wt };
+      }
+      return rows;
+    }
+    // Lanczos-3 resize of a source sub-rect → a new canvas at dw×dh. Separable:
+    // a horizontal pass (into a float buffer) then a vertical pass.
+    function lanczosResample(img, sx, sy, sw, sh, dw, dh) {
+      sx = Math.round(sx); sy = Math.round(sy); sw = Math.round(sw); sh = Math.round(sh);
+      const sc = document.createElement('canvas'); sc.width = sw; sc.height = sh;
+      const sctx = sc.getContext('2d'); sctx.imageSmoothingEnabled = false;
+      sctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+      const src = sctx.getImageData(0, 0, sw, sh).data;
+      const A = 3;
+      const wx = lanczosWeights(sw, dw, A), wy = lanczosWeights(sh, dh, A);
+      const horiz = new Float32Array(dw * sh * 4);       // sw×sh → dw×sh
+      for (let y = 0; y < sh; y++) {
+        const srow = y * sw * 4, drow = y * dw * 4;
+        for (let x = 0; x < dw; x++) {
+          const tap = wx[x], idx = tap.idx, wt = tap.wt, o = drow + x * 4;
+          let r = 0, g = 0, b = 0, al = 0;
+          for (let k = 0; k < idx.length; k++) {
+            const s = srow + idx[k] * 4, w = wt[k];
+            r += src[s] * w; g += src[s + 1] * w; b += src[s + 2] * w; al += src[s + 3] * w;
+          }
+          horiz[o] = r; horiz[o + 1] = g; horiz[o + 2] = b; horiz[o + 3] = al;
+        }
+      }
+      const out = new Uint8ClampedArray(dw * dh * 4);     // dw×sh → dw×dh
+      for (let y = 0; y < dh; y++) {
+        const tap = wy[y], idx = tap.idx, wt = tap.wt, drow = y * dw * 4;
+        for (let x = 0; x < dw; x++) {
+          const col = x * 4, o = drow + col;
+          let r = 0, g = 0, b = 0, al = 0;
+          for (let k = 0; k < idx.length; k++) {
+            const s = idx[k] * dw * 4 + col, w = wt[k];
+            r += horiz[s] * w; g += horiz[s + 1] * w; b += horiz[s + 2] * w; al += horiz[s + 3] * w;
+          }
+          out[o] = r; out[o + 1] = g; out[o + 2] = b; out[o + 3] = al;
+        }
+      }
+      const dc = document.createElement('canvas'); dc.width = dw; dc.height = dh;
+      dc.getContext('2d').putImageData(new ImageData(out, dw, dh), 0, 0);
+      return dc;
+    }
+    // Draw img[sx,sy,sw,sh] into ctx at [dx,dy,dw,dh] using the active algorithm.
+    function drawScaled(ctx, img, sx, sy, sw, sh, dx, dy, dw, dh) {
+      const enlarging = dw > sw + 0.5 || dh > sh + 0.5;   // only enlargement uses the chosen algorithm
+      if (enlarging && scaleAlgo === 'sharp') {
+        const px = Math.round(dx), py = Math.round(dy), pw = Math.round(dw), ph = Math.round(dh);
+        const tmp = lanczosResample(img, sx, sy, sw, sh, pw, ph);
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(tmp, px, py);
+        return;
+      }
+      ctx.imageSmoothingEnabled = !(enlarging && scaleAlgo === 'nearest');   // smooth for downscale/1:1 regardless
+      if (ctx.imageSmoothingEnabled) ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+    }
     function paint(canvas, L, scale) {
       const image = loaded.image, nW = image.naturalWidth, nH = image.naturalHeight;
       const w = Math.max(1, Math.round(L.outW * scale)), h = Math.max(1, Math.round(L.outH * scale));
@@ -1864,7 +1980,7 @@
         } else if (fillMode !== 'transparent') {
           ctx.fillStyle = toHex(fillValue()) || '#808080'; ctx.fillRect(0, 0, w, h);
         }
-        ctx.drawImage(image, sx, sy, ex - sx, ey - sy, padL, padT, ow, oh);   // image overlap on top
+        drawScaled(ctx, image, sx, sy, ex - sx, ey - sy, padL, padT, ow, oh);   // image overlap on top
         tintCanvas(ctx, 0, 0, w, h);
         return { w, h };
       }
@@ -1890,12 +2006,12 @@
         } else if (fillMode !== 'transparent' && L.fill) {
           ctx.fillStyle = L.fill; ctx.fillRect(0, 0, w, h);
         }
-        ctx.drawImage(image, 0, 0, nW, nH, dx, dy, iw, ih);
+        drawScaled(ctx, image, 0, 0, nW, nH, dx, dy, iw, ih);
         tintCanvas(ctx, 0, 0, w, h);
         return { w, h };
       }
-      if (L.src) ctx.drawImage(image, L.src.x, L.src.y, L.src.w, L.src.h, 0, 0, w, h);
-      else ctx.drawImage(image, 0, 0, nW, nH, Math.round(L.dx * scale), Math.round(L.dy * scale), Math.round(nW * scale), Math.round(nH * scale));
+      if (L.src) drawScaled(ctx, image, L.src.x, L.src.y, L.src.w, L.src.h, 0, 0, w, h);
+      else drawScaled(ctx, image, 0, 0, nW, nH, Math.round(L.dx * scale), Math.round(L.dy * scale), Math.round(nW * scale), Math.round(nH * scale));
       tintCanvas(ctx, 0, 0, w, h);
       return { w, h };
     }

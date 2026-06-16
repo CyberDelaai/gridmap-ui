@@ -9,4 +9,4 @@ Items are removed from the list once they are implemented / resolved (no archive
 
 ## SMALL (Z version bump)
 
-1. add different algoritms to increase image size
+_(none pending)_

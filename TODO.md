@@ -5,8 +5,8 @@ Items are removed from the list once they are implemented / resolved (no archive
 
 ## BIG (Y version bump)
 
-_(none pending)_
+1. Add HEX mode along side with the existing SQUARE mode (should be detected automatically, but to be able to switch manually, algoritm should be detecting both)
 
 ## SMALL (Z version bump)
 
-_(none pending)_
+1. add different algoritms to increase image size

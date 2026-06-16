@@ -1,4 +1,4 @@
-<!-- GRIDMAP v1.3.1 -->
+<!-- GRIDMAP v1.3.2 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -439,7 +439,7 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable" data-i18n="tag">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">1.3.1</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable" data-i18n="tag">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">1.3.2</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
@@ -888,7 +888,7 @@
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
-    const VER = ' // v1.3.1';
+    const VER = ' // v1.3.2';
     const CHARS = '!@#$%&*<>{}[]/|01ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let commitCount = '';
 
@@ -2371,12 +2371,28 @@
     });
 
     // ---- DRAW CELL drag: draw a fresh cell on empty space, move the cell from
-    // its interior, or resize it by an edge/corner. Every change re-tiles live. ----
+    // its interior, or resize it by an edge/corner. Every change re-tiles live.
+    // Edges/corners snap to the image boundary (0,0)–(nW,nH) when within
+    // SNAP_PX *screen* px, so the tiling lines up flush with the image. ----
+    const SNAP_PX = 8;
+    // SNAP_PX screen px expressed in image px (so the pull feels constant on
+    // screen regardless of zoom/downscale). 0 if the mapping isn't ready.
+    function drawSnapThresh() {
+      const r = mapC.getBoundingClientRect();
+      const screenPerImg = drawBufScale * (r.width / mapC.width);   // image px → screen px
+      return screenPerImg > 0 ? SNAP_PX / screenPerImg : 0;
+    }
+    const snapTo = (v, target, thr) => Math.abs(v - target) <= thr ? target : v;   // pull v onto target within thr
     canvasWrap.addEventListener('mousedown', (e) => {
       if (!drawMode || e.button !== 0) return;
       e.preventDefault();
       if (document.activeElement && document.activeElement.classList.contains('coord-input')) document.activeElement.blur();   // let a drag write all fields live
       const p = evToDrawImage(e), hit = cellHitAt(e.clientX, e.clientY);
+      if (!hit) {   // starting a fresh cell: snap the anchor corner to the image edge
+        const nW = loaded.image.naturalWidth, nH = loaded.image.naturalHeight, thr = drawSnapThresh();
+        p.x = snapTo(snapTo(p.x, 0, thr), nW, thr);
+        p.y = snapTo(snapTo(p.y, 0, thr), nH, thr);
+      }
       if (hit && hit.edges) cellDrag = { mode: 'resize', edges: hit.edges, orig: Object.assign({}, drawnCell) };
       else if (hit && hit.inside) cellDrag = { mode: 'move', start: p, orig: Object.assign({}, drawnCell) };
       else cellDrag = { mode: 'new', start: p, rect: { x: p.x, y: p.y, w: 0, h: 0 } };
@@ -2385,16 +2401,24 @@
       if (!drawMode || !cellDrag) return;
       e.preventDefault();
       const p = evToDrawImage(e);
+      const nW = loaded.image.naturalWidth, nH = loaded.image.naturalHeight, thr = drawSnapThresh();
       if (cellDrag.mode === 'new') {            // square: the side follows the larger drag delta
+        p.x = snapTo(snapTo(p.x, 0, thr), nW, thr);   // snap the moving corner to the image edge
+        p.y = snapTo(snapTo(p.y, 0, thr), nH, thr);
         const dx = p.x - cellDrag.start.x, dy = p.y - cellDrag.start.y, side = Math.max(Math.abs(dx), Math.abs(dy));
         cellDrag.rect = { x: dx < 0 ? cellDrag.start.x - side : cellDrag.start.x,
                           y: dy < 0 ? cellDrag.start.y - side : cellDrag.start.y, w: side, h: side };
       } else if (cellDrag.mode === 'move') {
         const o = cellDrag.orig;
-        drawnCell = { x: o.x + (p.x - cellDrag.start.x), y: o.y + (p.y - cellDrag.start.y), w: o.w, h: o.h };
+        let nx = o.x + (p.x - cellDrag.start.x), ny = o.y + (p.y - cellDrag.start.y);
+        nx = snapTo(nx, 0, thr); nx = Math.abs((nx + o.w) - nW) <= thr ? nW - o.w : nx;   // left side, then right side
+        ny = snapTo(ny, 0, thr); ny = Math.abs((ny + o.h) - nH) <= thr ? nH - o.h : ny;   // top side, then bottom side
+        drawnCell = { x: nx, y: ny, w: o.w, h: o.h };
         applyDrawnCell();
       } else {   // resize — kept SQUARE; the fixed (opposite) edges anchor the cell
         const o = cellDrag.orig, ed = cellDrag.edges;
+        p.x = snapTo(snapTo(p.x, 0, thr), nW, thr);   // snap the dragged edge/corner to the image edge
+        p.y = snapTo(snapTo(p.y, 0, thr), nH, thr);
         let x0 = o.x, y0 = o.y, x1 = o.x + o.w, y1 = o.y + o.h;
         if (ed.l) x0 = p.x; if (ed.r) x1 = p.x; if (ed.t) y0 = p.y; if (ed.b) y1 = p.y;
         const w = Math.abs(x1 - x0), h = Math.abs(y1 - y0), horiz = ed.l || ed.r, vert = ed.t || ed.b;

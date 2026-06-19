@@ -18,6 +18,13 @@ the cell count. No build step, no backend — just open `index.html`.
 - **Draw a cell** — when detection won't cooperate, draw one square cell by hand
   and GRIDMAP tiles it across the whole map. The cell stays adjustable — drag it
   to move the grid, or an edge/corner to resize.
+- **Hex grids** — switch **GRID TYPE** to **HEX (H)** or **HEX (V)** for hexagonal
+  maps (flat-top columns / pointy-top rows; the hex geometry and flat-to-flat grid
+  size match Roll20 and Foundry's Hexagonal Columns/Rows). Draw one hex cell and GRIDMAP tiles hexagons across the
+  map; the readout and PNG export use the hex column×row count, with cell-size
+  scaling measured flat-to-flat (the VTT "grid size"). **EDGES** mode works for
+  hex too — **CROP** keeps only whole hexes inside the image, **EXPAND** pads the
+  edge hexes out and paints the chosen **FILL** into the off-image margin.
 - **Export scaling** — scale the exported PNG so each cell is a chosen pixel size:
   VTT presets (Roll20 70px, Foundry 100/150px) or a custom value.
 
@@ -39,6 +46,15 @@ A square grid is a *periodic* pattern of full-length lines, so detection is a
    with the real grid (and for the upcoming crop feature).
 5. **Confidence gate** — weak periodicity falls back to estimating from a default
    cell size.
+
+**Hex grids** are detected with a different cue: a gradient-orientation histogram
+tells a square grid (edge energy at 0°/90°) from a hex grid, and flat-top (extra
+energy at 60°/120°) from pointy-top (30°/150°). Once the type is known the hex
+size is a 1-D problem again — a regular hex grid's flats repeat at half the hex
+size, so `g = 2 × period` — and a coarse 2-D search lands the lattice origin on
+the real edges. AUTO classifies square vs hex automatically; the GRID TYPE
+dropdown (SQUARE / HEX (H) / HEX (V)) forces either type and orientation, falling
+back to a hand-drawn hex when detection isn't confident.
 
 ## Planned / next
 

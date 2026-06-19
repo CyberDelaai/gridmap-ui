@@ -9,6 +9,7 @@ GM.const = {
                          // thin grid lines survive aggressive downscaling)
   DISPLAY_MAX: 1600,     // longest side of the on-screen canvas
   DEFAULT_CELL_PX: 70,   // fallback cell size (VTT-ish) when no grid is found
+  SQRT3: Math.sqrt(3),   // hex math: flat-to-flat = √3 · side, vertex-to-vertex = 2 · side
 };
 
 // localStorage setter (silent if storage is blocked).
@@ -19,6 +20,12 @@ GM.save = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 // initial values; the restore pass in app.js overrides them from localStorage.
 GM.state = {
   loaded: null,          // current map + detected grid geometry, for PNG export
+  // GRID TYPE: 'square' (the detector pipeline) or 'hex' (manual, drawn cell).
+  // hexOrient: 'flat' (hexes in columns, Foundry "Hexagonal Columns" / Roll20
+  // Hex(V)) or 'pointy' (hexes in rows, "Hexagonal Rows" / Roll20 Hex(H)).
+  // When loaded.gridType === 'hex', loaded carries hexG (flat-to-flat px),
+  // hexOX/hexOY (origin = top-left of hex(0,0)'s bounding box, image px).
+  gridType: 'square', hexOrient: 'flat',
   autoFill: '#808080',   // detected primary (border) colour of the current map
   edgeMode: 'crop', fillOverride: '', fillMode: 'vibrant',
   nightMode: false, nightColor: '#1c2c5e', nightPotency: 0.7,   // NIGHT MODE tint

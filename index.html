@@ -1,4 +1,4 @@
-<!-- GRIDMAP v1.3.4 -->
+<!-- GRIDMAP v1.4.0 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -79,7 +79,7 @@
         <a class="app-menu-item current" href="https://cyberdeck.tools/gridmap-ui/" aria-current="page">&gt; GRIDMAP_</a>
       </nav>
     </div>
-    <div class="tag"><span id="tagWord" class="glitchable" data-i18n="tag">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">1.3.4</span></span></div>
+    <div class="tag"><span id="tagWord" class="glitchable" data-i18n="tag">GRID MAP ANALYZER</span><span id="tagMeta" class="tag-meta"> // v<span id="tagVersion">1.4.0</span></span></div>
     <select class="lang-select" id="uiLangSel" aria-label="interface language"><option value="en">EN</option><option value="ru">RU</option><option value="fr">FR</option><option value="de">DE</option><option value="es">ES</option><option value="it">IT</option><option value="ja">JP</option><option value="zh">CN</option></select>
   </header>
 
@@ -88,7 +88,26 @@
     <aside class="config config-left" data-augmented-ui="tl-clip br-clip border">
       <h2 data-i18n="h_image">// IMAGE</h2>
       <button class="btn import-btn" id="importBtn" type="button" data-augmented-ui="tl-clip br-clip both" data-i18n="b_import">⬆ IMPORT IMAGE</button>
+      <hr class="divider" />
       <h2 data-i18n="h_detect">// GRID DETECTION:</h2>
+      <div class="fx-toggle" id="gridTypeRow">
+        <span class="fx-label" data-i18n="l_gridtype">// GRID TYPE:</span>
+        <!-- Custom dropdown (native <option> can't hold SVG). app.js drives it via a
+             .value getter/setter + a synthetic 'change' event, exactly like a <select>.
+             HEX (H)=flat-top, HEX (V)=pointy-top → shown as cyan line-drawn hex glyphs. -->
+        <div class="scale-select gridtype-dd" id="gridTypeSel" tabindex="0" role="listbox" aria-label="grid type — square, hex (H) or hex (V)">
+          <span class="gridtype-current"></span>
+          <span class="gridtype-caret" aria-hidden="true">▾</span>
+          <ul class="gridtype-menu" role="presentation">
+            <li class="gridtype-opt" data-value="square" role="option"><span data-i18n="b_square">SQUARE</span></li>
+            <li class="gridtype-opt" data-value="hex-h" role="option"><span data-i18n="o_hexh">HEX (H)</span>
+              <svg class="gridtype-hex" viewBox="0 0 20 18" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><polygon points="17,9 13.5,15.06 6.5,15.06 3,9 6.5,2.94 13.5,2.94"/></svg></li>
+            <li class="gridtype-opt" data-value="hex-v" role="option"><span data-i18n="o_hexv">HEX (V)</span>
+              <svg class="gridtype-hex" viewBox="0 0 20 18" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><polygon points="10,2 16.06,5.5 16.06,12.5 10,16 3.94,12.5 3.94,5.5"/></svg></li>
+          </ul>
+        </div>
+      </div>
+      <hr class="divider" />
       <div class="topbar">
         <div class="detect-group">
           <div class="detect-btns">
@@ -97,7 +116,13 @@
           </div>
           <div class="detect-btns">
             <button class="btn detect-btn" id="randomBtn" type="button" data-augmented-ui="tl-clip br-clip both" data-i18n="b_random" data-i18n-title="t_random">RANDOM 3</button>
-            <button class="btn detect-btn" id="cellBtn" type="button" data-augmented-ui="tl-clip br-clip both" data-i18n="b_cells" data-i18n-title="t_cells">4 CELLS</button>
+            <button class="btn detect-btn cell-btn" id="cellBtn" type="button" data-augmented-ui="tl-clip br-clip both" data-i18n-title="t_cells">
+              <span class="cell-btn-label" data-i18n="b_cells">4 CELLS</span>
+              <span class="cell-ico" aria-hidden="true">
+                <svg class="ico-sq" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><rect x="1.5" y="1.5" width="13" height="13"/><path d="M8 1.5V14.5M1.5 8H14.5"/></svg>
+                <svg class="ico-hex" viewBox="0 0 13 16" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"><polygon points="7.1,8 5.8,10.25 3.2,10.25 1.9,8 3.2,5.75 5.8,5.75"/><polygon points="11,5.75 9.7,8 7.1,8 5.8,5.75 7.1,3.5 9.7,3.5"/><polygon points="11,10.25 9.7,12.5 7.1,12.5 5.8,10.25 7.1,8 9.7,8"/></svg>
+              </span>
+            </button>
           </div>
           <div class="detect-btns">
             <button class="btn detect-btn" id="drawBtn" type="button" data-augmented-ui="tl-clip br-clip both" data-i18n="b_draw" data-i18n-title="t_draw">✎ DRAW CELL</button>

@@ -112,7 +112,7 @@
   .btn:disabled { opacity: .4; cursor: not-allowed; background: transparent; box-shadow: none; }
   .config .export-btn { width: 100%; margin-top: 16px; }
   .config .copy-btn { --btn-color: var(--main); width: 100%; margin-top: 8px; }
-  .config .import-btn { --btn-color: var(--main); width: 100%; margin-top: 4px; margin-bottom: 12px;}
+  .config .import-btn { --btn-color: var(--main); width: 100%; margin-top: 4px; }
   /* Sliding two-state toggle — ported from chronos/commlink .side-switch */
   .fx-toggle { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; }
   .fx-label { font-size: 12px; letter-spacing: 1.5px; color: var(--main); text-transform: uppercase; }
@@ -136,6 +136,7 @@
   }
   .side-switch[data-pos="left"] .lab.l,
   .side-switch[data-pos="right"] .lab.r { color: var(--main); }
+  .side-switch.wide { width: 124px; }
   .fx-toggle.disabled { opacity: .4; pointer-events: none; }
   /* fill-colour swatch: a clickable augmented-ui rectangle hiding a colour input */
   /* same footprint as a .side-switch toggle (112px); the two mode buttons
@@ -204,6 +205,13 @@
   .detect-btns { display: flex; gap: 8px; }
   .detect-btn { flex: 1; min-width: 0; height: 38px; letter-spacing: 2px; white-space: nowrap; }
   .btn.detect-btn.active { background: color-mix(in srgb, var(--btn-color) 28%, transparent); box-shadow: 0 0 12px color-mix(in srgb, var(--btn-color) 50%, transparent); }
+  /* 4 CELLS / 3 HEXES: label + a yellow line-drawn glyph of the cell group at the right */
+  .cell-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+  .cell-ico { display: inline-flex; align-items: center; color: #f5d915; flex: none; }
+  .cell-ico svg { display: block; width: auto; height: 15px; }
+  .cell-ico .ico-hex { display: none; height: 22.5px; }   /* hex glyph reads denser → 1.5× the square */
+  .cell-btn.is-hex .cell-ico .ico-sq { display: none; }
+  .cell-btn.is-hex .cell-ico .ico-hex { display: block; }
   /* result readout: // RESULT SIZE label (col 1, left) + the cell count (NN×MM)
      and the exported pixel size stacked in col 2 (right) */
   .config .calc-size { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 18px; }
@@ -336,6 +344,22 @@
     cursor: pointer; width: 158px;
   }
   .scale-select:focus { outline: none; border-color: var(--main); box-shadow: 0 0 6px rgba(var(--main-rgb),0.4); }
+  /* GRID TYPE custom dropdown: SQUARE / HEX with cyan line-drawn hex glyphs (flat-top vs pointy-top) */
+  .gridtype-dd { position: relative; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; }
+  .gridtype-dd:focus { outline: none; border-color: var(--main); box-shadow: 0 0 6px rgba(var(--main-rgb),0.4); }
+  .gridtype-current { display: inline-flex; align-items: center; gap: 7px; min-height: 14px; }
+  .gridtype-caret { font-size: 10px; opacity: .7; margin-left: 8px; }
+  .gridtype-dd.open .gridtype-caret { transform: scaleY(-1); }
+  .gridtype-hex { display: block; height: 14px; width: auto; color: var(--cyan); }
+  .gridtype-menu {
+    position: absolute; top: 100%; left: -1px; right: -1px; margin: 3px 0 0; padding: 0;
+    list-style: none; background: var(--panel); border: 1px solid rgba(var(--main-rgb),0.4);
+    z-index: 30; display: none;
+  }
+  .gridtype-dd.open .gridtype-menu { display: block; }
+  .gridtype-opt { display: flex; align-items: center; gap: 7px; padding: 6px 8px; cursor: pointer; white-space: nowrap; }
+  .gridtype-opt:hover, .gridtype-opt.sel { background: rgba(var(--main-rgb),0.12); color: var(--accent); }
+  .gridtype-opt:hover .gridtype-hex, .gridtype-opt.sel .gridtype-hex { color: var(--cyan); }
   .scale-custom {
     width: 158px; background: var(--panel); color: var(--accent);
     border: 1px solid rgba(var(--main-rgb),0.4);

@@ -4,7 +4,7 @@
   const t = GM.t;
   const IDB = GM.idb;
   const analyzeImageData = GM.detect.analyze;
-  const { ANALYSIS_MAX, DISPLAY_MAX, DEFAULT_CELL_PX } = GM.const;
+  const { ANALYSIS_MAX, DISPLAY_MAX, DEFAULT_CELL_PX, SQRT3 } = GM.const;
   // ---- Working-area image import + analysis (drag-drop / paste / click) ----
   (function setupImport() {
     const zone = $('dropzone'), mapC = $('mapCanvas'), gridC = $('gridCanvas'), trimC = $('trimCanvas'),
@@ -15,7 +15,10 @@
     // Run detection on a downscaled copy of loaded.image — over the whole image,
     // or only the user-picked region(s) — and write the result into loaded's
     // geometry. (loaded.image must already be set.)
-    function detectGrid(pickRegions, seedCell) {
+    // pickRegions/seedCell drive the square detectors (SELECT / RANDOM / 4-CELLS).
+    // force ('hex'|'square') overrides the full-image AUTO classification. Returns
+    // res so callers can react (e.g. the toggle falling back to DRAW on miss).
+    function detectGrid(pickRegions, seedCell, force, hexSeed) {
       const image = S.loaded.image, nW = image.naturalWidth, nH = image.naturalHeight;
       const aScale = Math.min(1, ANALYSIS_MAX / Math.max(nW, nH));
       const aW = Math.max(1, Math.round(nW * aScale)), aH = Math.max(1, Math.round(nH * aScale));
@@ -23,13 +26,28 @@
       const actx = ac.getContext('2d', { willReadFrequently: true });
       actx.drawImage(image, 0, 0, aW, aH);
       const scaled = pickRegions && pickRegions.map((r) => ({ x: r.x * aScale, y: r.y * aScale, w: r.w * aScale, h: r.h * aScale }));
-      const opts = (seedCell > 0) ? { period: seedCell * aScale, margin: 0.25 } : null;   // cell-size hint (image px → analysis px)
+      // SELECT / RANDOM (region picks, no explicit force) follow the CURRENT grid
+      // type: in hex mode they size the hex grid from the picked area(s); otherwise
+      // they size square cells. An explicit `force` (AUTO toggle, 4-CELLS) still wins.
+      const regionHex = pickRegions && !force && S.loaded.gridType === 'hex';
+      const opts = { force: force || (regionHex ? 'hex' : (pickRegions || seedCell > 0 ? 'square' : undefined)) };
+      if (regionHex) opts.orient = S.hexOrient;
+      if (seedCell > 0) { opts.period = seedCell * aScale; opts.margin = 0.25; }   // cell-size hint (image px → analysis px)
+      if (hexSeed && hexSeed.g > 0) { opts.force = 'hex'; opts.hexG = hexSeed.g * aScale; opts.orient = hexSeed.orient; }   // hex-size hint (the "3 HEXES" tool)
       const res = analyzeImageData(actx.getImageData(0, 0, aW, aH), scaled, opts);
-      if (res.detected) {
+      if (res.gridType === 'hex' && res.detected) {
+        S.loaded.gridType = 'hex'; S.hexOrient = res.orient;
+        S.loaded.hexG = res.hex.gFrac * nW;
+        S.loaded.hexOX = res.hex.oxFrac * nW; S.loaded.hexOY = res.hex.oyFrac * nH;
+        S.loaded.estimated = false;
+        setHexWindow();   // default extent for the current EDGES MODE (crop/expand)
+      } else if (res.detected) {
+        S.loaded.gridType = 'square';
         S.loaded.cols = res.cols; S.loaded.rows = res.rows; S.loaded.estimated = false;
         S.loaded.vFrac = res.ax.periodFrac; S.loaded.vOff = res.ax.offsetFrac;
         S.loaded.hFrac = res.ay.periodFrac; S.loaded.hOff = res.ay.offsetFrac;
       } else {
+        S.loaded.gridType = 'square';
         S.loaded.cols = Math.max(1, Math.round(nW / DEFAULT_CELL_PX));
         S.loaded.rows = Math.max(1, Math.round(nH / DEFAULT_CELL_PX));
         S.loaded.estimated = true;
@@ -37,13 +55,17 @@
       }
       S.loaded.confidence = res.confidence;
       S.loaded.drawn = false;   // an auto/select/random detection supersedes any drawn cell
+      return res;
     }
 
     function onImage(image, restore) {
       const nW = image.naturalWidth, nH = image.naturalHeight;
       if (!nW || !nH) return;
       S.loaded = { image, cols: 1, rows: 1, vFrac: 1, vOff: 0, hFrac: 1, hOff: 0, estimated: true, confidence: 0 };
-      detectGrid(null);                // full-image detection
+      // Fresh import → AUTO classifies square vs hex. Restore → force the saved
+      // type so the base geometry matches what restoreManual() reinstates.
+      const savedType = restore ? localStorage.getItem('gridmap:gridType') : null;
+      detectGrid(null, 0, restore ? (savedType === 'hex' ? 'hex' : 'square') : undefined);
       S.autoFill = edgeColor(image);     // detected primary colour for the fill swatch
       S.drawMode = false; zone.classList.remove('drawing');   // never load straight into draw mode
       if (restore) {                   // reload of the saved map → restore the saved settings
@@ -109,6 +131,48 @@
     const nightToggle = $('nightToggle'), nightColorRow = $('nightColorRow'), nightSwatch = $('nightSwatch'), nightInput = $('nightInput'),
       potencyRow = $('potencyRow'), nightPotencySlider = $('nightPotency');
     const scaleSel = $('scaleSel'), scaleCustomRow = $('scaleCustomRow'), scaleCustom = $('scaleCustom'), algoSel = $('algoSel');
+    const gridTypeSel = $('gridTypeSel');
+    // The GRID TYPE control is a custom dropdown (so HEX options can carry an SVG
+    // glyph). Make it quack like a <select>: a .value getter/setter that re-renders
+    // the collapsed label, plus a 'change' event fired only on a real user pick.
+    if (gridTypeSel && gridTypeSel.querySelector) {
+      const current = gridTypeSel.querySelector('.gridtype-current');
+      const opts = Array.from(gridTypeSel.querySelectorAll('.gridtype-opt'));
+      let ddValue = 'square';
+      const renderCurrent = () => {
+        const li = opts.find((o) => o.dataset.value === ddValue) || opts[0];
+        current.innerHTML = li.innerHTML;                       // mirror option (label + icon)
+        opts.forEach((o) => o.classList.toggle('sel', o === li));
+      };
+      const open = (o) => gridTypeSel.classList.toggle('open', o);
+      const pick = (v) => {                                     // user choice → fire change
+        if (v === ddValue) return;
+        ddValue = v; renderCurrent(); gridTypeSel.dispatchEvent(new Event('change'));
+      };
+      Object.defineProperty(gridTypeSel, 'value', {
+        get() { return ddValue; },
+        set(v) { ddValue = v; renderCurrent(); },              // silent sync (no change event)
+      });
+      gridTypeSel.addEventListener('click', (e) => {
+        const li = e.target.closest('.gridtype-opt');
+        if (li) { open(false); pick(li.dataset.value); }
+        else open(!gridTypeSel.classList.contains('open'));
+      });
+      gridTypeSel.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(!gridTypeSel.classList.contains('open')); }
+        else if (e.key === 'Escape') open(false);
+        else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          const i = Math.max(0, opts.findIndex((o) => o.dataset.value === ddValue));
+          const ni = Math.min(opts.length - 1, Math.max(0, i + (e.key === 'ArrowDown' ? 1 : -1)));
+          pick(opts[ni].dataset.value);
+        }
+      });
+      document.addEventListener('click', (e) => { if (!gridTypeSel.contains(e.target)) open(false); });
+      const langSel = $('uiLangSel');                           // keep collapsed label translated
+      if (langSel) langSel.addEventListener('change', renderCurrent);
+      renderCurrent();
+    }
     const autoBtn = $('autoBtn'), selectBtn = $('selectBtn'), randomBtn = $('randomBtn'), cellBtn = $('cellBtn'), drawBtn = $('drawBtn'),
       drawCoordsWrap = $('drawCoordsWrap'), drawCoords = $('drawCoords'), cellX = $('cellX'), cellY = $('cellY'), cellSize = $('cellSize'),
       colVal = $('colVal'), rowVal = $('rowVal'), calcSize = $('calcSize'), calcVal = $('calcVal'), outVal = $('outVal');
@@ -127,6 +191,7 @@
       if (Number.isFinite(ecp) && ecp > 0) S.exportCellPx = Math.min(2000, ecp);
       S.exportCustom = S.exportCellPx > 0 && (localStorage.getItem('gridmap:exportCustom') === '1' || ![70, 100, 150].includes(S.exportCellPx));
       const sa = localStorage.getItem('gridmap:scaleAlgo'); if (sa === 'nearest' || sa === 'sharp' || sa === 'smooth') S.scaleAlgo = sa;
+      const ho = localStorage.getItem('gridmap:hexOrient'); if (ho === 'flat' || ho === 'pointy') S.hexOrient = ho;
     } catch (e) { /* storage blocked */ }
     const save = GM.save;
 
@@ -175,11 +240,15 @@
 
     function syncToggles() {
       if (modeToggle) modeToggle.dataset.pos = S.edgeMode === 'expand' ? 'right' : 'left';
-      // the fill is used by EXPAND and by the MANUAL window's off-image area
-      if (fillRow) fillRow.classList.toggle('disabled', !(S.manual || S.edgeMode === 'expand'));
+      // the fill is used by EXPAND, by the MANUAL window's off-image area, and by a
+      // hex window that pokes off the image (the EXPAND default or an extend-drag)
+      if (fillRow) fillRow.classList.toggle('disabled', !(S.manual || S.edgeMode === 'expand' || hexWindowOffImage()));
     }
     if (modeToggle) modeToggle.addEventListener('click', () => {
-      S.edgeMode = S.edgeMode === 'expand' ? 'crop' : 'expand'; save('gridmap:edgeMode', S.edgeMode); syncToggles(); renderDisplay();
+      S.edgeMode = S.edgeMode === 'expand' ? 'crop' : 'expand'; save('gridmap:edgeMode', S.edgeMode);
+      // hex re-applies the crop/expand default window (square recomputes in computeLayout)
+      if (S.loaded && S.loaded.gridType === 'hex' && S.loaded.hexG > 0) setHexWindow();
+      syncToggles(); renderDisplay();
     });
     function setFill(color) {
       const hex = toHex(color);
@@ -303,6 +372,7 @@
       if (drawBtn) drawBtn.classList.toggle('active', S.drawMode);
       if (drawCoordsWrap) { drawCoordsWrap.classList.toggle('open', S.drawMode); drawCoordsWrap.inert = !S.drawMode; }   // slide the coord sub-panel open only while drawing
       if (S.drawMode) syncCoordInputs();
+      syncGridTypeUI();   // keep the SQUARE/HEX + orientation switches in sync
       syncToggles();   // the FILL control is also usable in MANUAL (off-image fill)
     }
     // Re-apply the smart fix-edges default from the DETECTED grid — used on
@@ -312,6 +382,7 @@
       // edge-fixing is always on; reset to the CROP default and the detected fill
       S.edgeMode = 'crop'; save('gridmap:edgeMode', 'crop');
       S.fillOverride = ''; try { localStorage.removeItem('gridmap:fillColor'); } catch (e) {}
+      if (S.loaded.gridType === 'hex' && S.loaded.hexG > 0) setHexWindow();   // hex: crop window to match the reset mode
       syncToggles(); refreshFill();
     }
     // ---- // CANVAS d-pad ----
@@ -340,6 +411,12 @@
       save('gridmap:winC1', S.winC1); save('gridmap:winR1', S.winR1);
       save('gridmap:drawn', (S.loaded && S.loaded.drawn) ? '1' : '0');
       try { localStorage.setItem('gridmap:drawnCell', S.drawnCell ? JSON.stringify(S.drawnCell) : ''); } catch (e) {}
+      // GRID TYPE + hex geometry
+      save('gridmap:gridType', S.loaded ? S.loaded.gridType : S.gridType);
+      save('gridmap:hexOrient', S.hexOrient);
+      if (S.loaded && S.loaded.gridType === 'hex') {
+        save('gridmap:hexG', S.loaded.hexG); save('gridmap:hexOX', S.loaded.hexOX); save('gridmap:hexOY', S.loaded.hexOY);
+      }
     }
     function restoreManual() {
       const gi = (k, d) => { const n = parseInt(localStorage.getItem(k), 10); return Number.isFinite(n) ? n : d; };
@@ -352,17 +429,41 @@
         S.winC1 = gi('gridmap:winC1', S.gCols); S.winR1 = gi('gridmap:winR1', S.gRows);
         const dc = JSON.parse(localStorage.getItem('gridmap:drawnCell') || 'null');
         S.drawnCell = (dc && dc.w > 0 && dc.h > 0) ? dc : null;
+        // GRID TYPE + hex geometry (default square keeps the detector pipeline)
+        const ho = localStorage.getItem('gridmap:hexOrient'); if (ho === 'flat' || ho === 'pointy') S.hexOrient = ho;
+        if (localStorage.getItem('gridmap:gridType') === 'hex') {
+          S.loaded.gridType = 'hex';
+          S.loaded.hexG = gf('gridmap:hexG', 0); S.loaded.hexOX = gf('gridmap:hexOX', 0); S.loaded.hexOY = gf('gridmap:hexOY', 0);
+          // restore the saved hex window (its counts drive the readout); if the
+          // saved bounds aren't a valid hex window, default to covering the image
+          if (S.loaded.hexG > 0 && S.winC1 > S.winC0 && S.winR1 > S.winR0 && localStorage.getItem('gridmap:winC1') !== null) {
+            S.loaded.cols = S.winC1 - S.winC0; S.loaded.rows = S.winR1 - S.winR0;
+          } else if (S.loaded.hexG > 0) {
+            setHexWindow();
+          }
+        } else {
+          S.loaded.gridType = 'square';
+        }
       } catch (e) { S.manual = false; S.gCols = S.loaded.cols; S.gRows = S.loaded.rows; S.offX = 0; S.offY = 0; S.drawnCell = null; }
     }
-    // AUTO button: run the default 5-point detection and return to the auto grid.
+    // AUTO button: re-run the default 5-point detection and return to the auto
+    // grid. The square↔hex classification is decided ONCE — at first load and by
+    // the manual GRID TYPE toggle — so AUTO re-detects WITHIN the current type and
+    // never re-classifies (it can't flip a map the user pinned). A forced-hex
+    // detection that comes back unsure falls back to manual DRAW, like the toggle.
     function runAuto() {
       if (!S.loaded) return;
       S.selecting = false; S.cellMode = false; S.regions = []; S.dragStart = null; S.dragRect = null;   // leave region-pick
       S.drawMode = false; S.cellDrag = null; S.drawnCell = null; zone.classList.remove('selecting', 'drawing');   // leave draw-cell
-      detectGrid(null);                             // default quincunx (5-point) detection
-      S.manual = false; S.offX = 0; S.offY = 0;
-      S.gCols = S.loaded.cols; S.gRows = S.loaded.rows;
-      applyAutoFix();
+      const type = S.loaded.gridType;
+      const res = detectGrid(null, 0, type);        // default quincunx (5-point) detection, locked to the current type
+      if (type === 'hex' && !(res.gridType === 'hex' && res.detected)) {
+        S.loaded.gridType = 'hex'; enterDraw();     // hex detection unsure → draw it by hand
+      } else {
+        S.manual = false; S.offX = 0; S.offY = 0;
+        S.gCols = S.loaded.cols; S.gRows = S.loaded.rows;
+        applyAutoFix();
+      }
       syncAutoMode(); renderDisplay();
     }
     if (autoBtn) autoBtn.addEventListener('click', runAuto);
@@ -405,6 +506,13 @@
     function clampDrawnCell(c) {
       const nW = S.loaded.image.naturalWidth, nH = S.loaded.image.naturalHeight;
       const min = Math.max(MIN_DRAW_CELL, Math.max(nW, nH) / MAX_DRAW_LINES);
+      if (S.loaded.gridType === 'hex') {
+        // HEX: the bbox follows the orientation's aspect ratio; g (flat-to-flat)
+        // is the one free dimension. A square-ish drag (w≈h) seeds g = the side.
+        const g = Math.max(min, Number.isFinite(c.g) ? c.g : Math.max(c.w, c.h));
+        const bb = hexBBox(g, S.hexOrient);
+        return { x: c.x, y: c.y, w: bb.w, h: bb.h, g: g };
+      }
       const side = Math.max(min, c.w, c.h);
       c.w = side; c.h = side;
       return c;
@@ -412,6 +520,17 @@
     function applyDrawnCell() {
       if (!S.loaded || !S.drawnCell) return;
       const nW = S.loaded.image.naturalWidth, nH = S.loaded.image.naturalHeight;
+      if (S.loaded.gridType === 'hex') {
+        // HEX: the drawn cell IS the hex — origin at its bbox top-left, g from its
+        // bbox. Counts come from hexLayout. Written in the same loaded.cols/rows
+        // shape the rest of the app reads, so the readout + export just work.
+        const g = S.drawnCell.g || hexGFromBBox(S.drawnCell, S.hexOrient);
+        S.loaded.hexG = g; S.loaded.hexOX = S.drawnCell.x; S.loaded.hexOY = S.drawnCell.y;
+        S.loaded.estimated = false; S.loaded.confidence = 1; S.loaded.drawn = true;
+        S.manual = false; S.offX = 0; S.offY = 0;
+        setHexWindow();   // tile to the current EDGES MODE default (crop/expand), resizable after
+        return;
+      }
       const cellW = S.drawnCell.w, cellH = S.drawnCell.h;
       const wrap = (o, f) => ((o % f) + f) % f;   // grid phase is periodic — keep it in [0, cell)
       S.loaded.cols = Math.max(1, Math.round(nW / cellW));
@@ -439,6 +558,76 @@
     }
     if (drawBtn) drawBtn.addEventListener('click', () => { if (!S.loaded) return; S.drawMode ? exitDraw() : enterDraw(); });
 
+    // ---- GRID TYPE (SQUARE | HEX) + hex ORIENTATION (FLAT | POINTY) ----
+    // AUTO classifies the type; this toggle is a manual OVERRIDE that re-runs the
+    // detector forced to the chosen type. Forcing HEX falls back to manual DRAW
+    // when detection isn't confident. The switches reflect the loaded image's
+    // current type and persist as the UI preference.
+    function syncGridTypeUI() {
+      const type = S.loaded ? S.loaded.gridType : S.gridType;
+      if (gridTypeSel) gridTypeSel.value = type === 'hex' ? (S.hexOrient === 'flat' ? 'hex-h' : 'hex-v') : 'square';
+      // The "4 CELLS" seed tool reads "# HEXES" in hex mode. Swap the data-i18n keys
+      // (so a later language change keeps the right label) and apply them now.
+      if (cellBtn) {
+        const lblKey = type === 'hex' ? 'b_cells_hex' : 'b_cells';
+        const titKey = type === 'hex' ? 't_cells_hex' : 't_cells';
+        const lbl = cellBtn.querySelector('.cell-btn-label');
+        if (lbl) { lbl.setAttribute('data-i18n', lblKey); lbl.textContent = GM.t(lblKey); }
+        cellBtn.setAttribute('data-i18n-title', titKey);
+        cellBtn.title = GM.t(titKey);
+        cellBtn.classList.toggle('is-hex', type === 'hex');   // square ↔ hex glyph
+      }
+    }
+    function leaveModes() {   // exit any region-pick / draw sub-mode before re-detecting
+      S.selecting = false; S.cellMode = false; S.regions = []; S.dragStart = null; S.dragRect = null;
+      S.drawMode = false; S.cellDrag = null; zone.classList.remove('selecting', 'drawing');
+    }
+    function setGridType(type) {
+      S.gridType = type; save('gridmap:gridType', type);
+      if (!S.loaded) { syncGridTypeUI(); return; }
+      if (type === 'hex') {
+        leaveModes();
+        const res = detectGrid(null, 0, 'hex');     // force a hex detection attempt
+        if (res.gridType === 'hex' && res.detected) {
+          S.manual = false; S.offX = 0; S.offY = 0; S.drawnCell = null;
+          S.gCols = S.loaded.cols; S.gRows = S.loaded.rows;
+          applyAutoFix();
+        } else {
+          S.loaded.gridType = 'hex'; S.drawnCell = null;   // detection unsure → draw it by hand
+          enterDraw();
+        }
+      } else {
+        leaveModes();
+        S.drawnCell = null;
+        detectGrid(null, 0, 'square');               // force the square detector
+        S.manual = false; S.offX = 0; S.offY = 0;
+        S.gCols = S.loaded.cols; S.gRows = S.loaded.rows;
+        applyAutoFix();
+      }
+      syncAutoMode(); renderDisplay();
+    }
+    function setHexOrient(o) {
+      S.hexOrient = o; save('gridmap:hexOrient', o);
+      if (S.loaded && S.loaded.gridType === 'hex' && S.drawnCell) {
+        const g = S.drawnCell.g || hexGFromBBox(S.drawnCell, o);
+        S.drawnCell = clampDrawnCell({ x: S.drawnCell.x, y: S.drawnCell.y, g: g });   // reshape bbox to the new orientation
+        applyDrawnCell();
+      }
+      syncGridTypeUI();
+      if (S.loaded) renderDisplay();
+    }
+    // Unified SQUARE | HEX (H) | HEX (V) dropdown: HEX (H) = flat-top columns,
+    // HEX (V) = pointy-top rows. Switching to a hex variant forces that
+    // orientation rather than letting detection re-pick it.
+    function setGridChoice(choice) {
+      if (choice === 'square') { setGridType('square'); return; }
+      const orient = choice === 'hex-h' ? 'flat' : 'pointy';
+      setGridType('hex');
+      if (S.hexOrient !== orient) setHexOrient(orient);
+      else syncGridTypeUI();
+    }
+    if (gridTypeSel) gridTypeSel.addEventListener('change', () => setGridChoice(gridTypeSel.value));
+
     // ---- DRAW CELL sub-panel: precise X/Y (top-left) + square size, in image px.
     // Editing a field re-tiles live; dragging the cell writes the values back. The
     // field the user is typing in is left alone (force=true snaps it on blur).
@@ -450,19 +639,23 @@
       [cellX, cellY, cellSize].forEach((inp) => { if (inp) inp.disabled = !has; });
       if (drawCoords) drawCoords.querySelectorAll('.coord-btn').forEach((b) => { b.disabled = !has; });
       const set = (inp, val) => { if (inp && (force || inp !== focused)) inp.value = val; };
-      if (has) { set(cellX, fmtCoord(S.drawnCell.x)); set(cellY, fmtCoord(S.drawnCell.y)); set(cellSize, fmtCoord(S.drawnCell.w)); }
-      else { set(cellX, ''); set(cellY, ''); set(cellSize, ''); }
+      if (has) {
+        // SIZE is the cell's defining size: square side, or hex flat-to-flat g.
+        const sz = S.loaded.gridType === 'hex' ? (S.drawnCell.g || hexGFromBBox(S.drawnCell, S.hexOrient)) : S.drawnCell.w;
+        set(cellX, fmtCoord(S.drawnCell.x)); set(cellY, fmtCoord(S.drawnCell.y)); set(cellSize, fmtCoord(sz));
+      } else { set(cellX, ''); set(cellY, ''); set(cellSize, ''); }
     }
     function applyCoordInputs() {
       if (!S.loaded || !S.drawnCell) return;
       const nW = S.loaded.image.naturalWidth, nH = S.loaded.image.naturalHeight;
+      const hex = S.loaded.gridType === 'hex';
       let x = parseFloat(cellX.value), y = parseFloat(cellY.value), s = parseFloat(cellSize.value);
       if (!Number.isFinite(x)) x = S.drawnCell.x;
       if (!Number.isFinite(y)) y = S.drawnCell.y;
-      if (!Number.isFinite(s)) s = S.drawnCell.w;
+      if (!Number.isFinite(s)) s = hex ? (S.drawnCell.g || hexGFromBBox(S.drawnCell, S.hexOrient)) : S.drawnCell.w;
       x = Math.max(0, Math.min(nW, x)); y = Math.max(0, Math.min(nH, y));
       s = Math.min(Math.min(nW, nH), Math.max(1, s));
-      S.drawnCell = clampDrawnCell({ x: x, y: y, w: s, h: s });
+      S.drawnCell = clampDrawnCell(hex ? { x: x, y: y, g: s } : { x: x, y: y, w: s, h: s });
       applyDrawnCell();
       renderDrawView();   // re-tiles + repaints; syncs the non-focused inputs
     }
@@ -529,6 +722,26 @@
       }
       g.restore();
     }
+    // The magenta editable HEX cell: a hexagon outline at the cell's centre, with
+    // the same bbox corner grips as the square handle (resize hit-testing stays
+    // bbox-based). `cell` is a drawnCell {x,y,w,h,g?}; g falls back to the bbox.
+    function drawHexCellHandle(g, cell, scale, ox, oy, withGrips) {
+      const gg = cell.g || hexGFromBBox(cell, S.hexOrient) || Math.max(cell.w, cell.h);
+      const cx = cell.x + cell.w / 2, cy = cell.y + cell.h / 2;
+      const corners = hexCorners(gg, S.hexOrient);
+      g.save();
+      g.beginPath();
+      corners.forEach((p, i) => { const X = ox + (cx + p.x) * scale, Y = oy + (cy + p.y) * scale; i ? g.lineTo(X, Y) : g.moveTo(X, Y); });
+      g.closePath();
+      g.fillStyle = 'rgba(255,0,60,0.16)'; g.fill();
+      g.strokeStyle = 'rgba(255,0,60,0.95)'; g.lineWidth = 2; g.stroke();
+      if (withGrips) {
+        const x = ox + cell.x * scale, y = oy + cell.y * scale, w = cell.w * scale, h = cell.h * scale, s = 5;
+        g.fillStyle = 'rgba(255,0,60,0.95)';
+        [[x, y], [x + w, y], [x, y + h], [x + w, y + h]].forEach(([gx, gy]) => g.fillRect(gx - s, gy - s, s * 2, s * 2));
+      }
+      g.restore();
+    }
     function drawDrawHint(g, dW, dH) {            // centred instruction shown before the first cell exists
       g.save();
       g.fillStyle = 'rgba(0,240,255,0.92)';
@@ -540,13 +753,16 @@
     // Tiled grid + editable cell on the overlay. EXPAND maps the padded output
     // (L fracs across the whole buffer); CROP maps the full image (view() fracs).
     function drawCellOverlay(L, bufW, bufH, scale, ox, oy) {
+      const hex = S.loaded.gridType === 'hex';
       if (S.drawnCell) {
-        if (L && L.expand) drawGrid(L.vFrac, L.vOff, L.hFrac, L.hOff, bufW, bufH);
+        if (hex) drawHexOverlay(bufW, bufH, scale, ox, oy);   // tile the whole map with hexagons
+        else if (L && L.expand) drawGrid(L.vFrac, L.vOff, L.hFrac, L.hOff, bufW, bufH);
         else { const v = view(); drawGrid(v.vFrac, v.vOff, v.hFrac, v.hOff, bufW, bufH); }
       } else { gridC.width = bufW; gridC.height = bufH; gridC.getContext('2d').clearRect(0, 0, bufW, bufH); }
       const g = gridC.getContext('2d');
-      if (S.cellDrag && S.cellDrag.rect) drawCellRect(g, S.cellDrag.rect, scale, ox, oy, false);   // freehand draw of a fresh cell
-      else if (S.drawnCell) drawCellRect(g, S.drawnCell, scale, ox, oy, true);
+      const handle = hex ? drawHexCellHandle : drawCellRect;
+      if (S.cellDrag && S.cellDrag.rect) handle(g, S.cellDrag.rect, scale, ox, oy, false);   // freehand draw of a fresh cell
+      else if (S.drawnCell) handle(g, S.drawnCell, scale, ox, oy, true);
       else drawDrawHint(g, bufW, bufH);
     }
     // DRAW CELL view: the SAME crop/expand base render as the normal view (so the
@@ -570,8 +786,25 @@
         return;
       }
       saveManual();
+      if (S.loaded.gridType === 'hex') {
+        // HEX draw: plain full image (clean screen↔image mapping) + the tiled hex
+        // overlay + the editable hex handle. The resizable window applies in the
+        // normal view, not while drawing the defining cell.
+        const scale = Math.min(1, DISPLAY_MAX / Math.max(nW, nH));
+        const dW = Math.max(1, Math.round(nW * scale)), dH = Math.max(1, Math.round(nH * scale));
+        mapC.width = dW; mapC.height = dH;
+        const ctx = mapC.getContext('2d');
+        ctx.drawImage(image, 0, 0, dW, dH); tintCanvas(ctx, 0, 0, dW, dH);
+        S.dispScale = scale; drawImgOX = 0; drawImgOY = 0; drawBufScale = scale;
+        drawCellOverlay(null, dW, dH, scale, 0, 0);
+        syncCoordInputs();
+        const Lh = computeLayout();
+        setReadout(Lh.cols, Lh.rows, Lh.outW, Lh.outH);
+        applyZoom();
+        return;
+      }
       const L = computeLayout();   // respects the CROP/EXPAND edges mode (manual is false here)
-      if (S.edgeMode === 'crop' && L.src) {
+      if ((S.edgeMode === 'crop' || L.hex) && L.src) {
         // CROP: full image with the cropped-away margins greyed (matches the export crop)
         const scale = Math.min(1, DISPLAY_MAX / Math.max(nW, nH));
         const dW = Math.max(1, Math.round(nW * scale)), dH = Math.max(1, Math.round(nH * scale));
@@ -607,11 +840,186 @@
     syncEffects();
     syncScaleUI();
 
+    // ---- HEX geometry (regular hexes, matching Roll20 / Foundry VTT) ----------
+    // VTT "grid size" g = the FLAT-TO-FLAT distance of a hex (top↔bottom for a
+    // flat-top hex, left↔right for a pointy-top hex). Side s = g/√3, and the
+    // vertex-to-vertex span = 2s. A hex grid here is fully described by the
+    // orientation, g, and an origin (hexOX,hexOY) = the top-left corner of hex
+    // (col 0,row 0)'s bounding box, all in image px.
+    function hexBBox(g, orient) {                 // bounding-box dims of one hex
+      const vv = 2 * g / SQRT3;                   // vertex-to-vertex
+      return orient === 'flat' ? { w: vv, h: g } : { w: g, h: vv };
+    }
+    function hexGFromBBox(cell, orient) {         // flat-to-flat g from a bbox (flat: height, pointy: width)
+      return orient === 'flat' ? cell.h : cell.w;
+    }
+    // g (flat-to-flat) from a box drawn around 3 tightly-grouped (mutually-adjacent)
+    // hexes — the "3 HEXES" seed tool. Any compact triangular triple spans exactly
+    // 2·g across the flats and (7√3/6)·g ≈ 2.02·g across the staggered axis,
+    // independent of which way the triangle points. We average both estimates so an
+    // imprecise drag still lands close; the lattice origin is refined from the image.
+    const HEX_CLUSTER3 = 7 * SQRT3 / 6;           // staggered-axis span of a 3-hex cluster, in units of g
+    function hexGFromCluster(box, orient) {
+      return orient === 'flat'
+        ? (box.w / HEX_CLUSTER3 + box.h / 2) / 2
+        : (box.w / 2 + box.h / HEX_CLUSTER3) / 2;
+    }
+    function hexCorners(g, orient) {              // 6 corner offsets from the hex centre (image px)
+      const R = g / SQRT3, base = orient === 'flat' ? 0 : Math.PI / 6, out = [];
+      for (let i = 0; i < 6; i++) { const a = base + i * Math.PI / 3; out.push({ x: R * Math.cos(a), y: R * Math.sin(a) }); }
+      return out;
+    }
+    // Full tiling for an image: cell counts + the px bounding box of all whole
+    // hexes (may extend past the image; callers clamp). The half-step offset of
+    // alternate columns/rows is included in the bounds so no hex is clipped.
+    function hexLayout(nW, nH, orient, g, ox, oy) {
+      const { w: bw, h: bh } = hexBBox(g, orient);
+      const dx = orient === 'flat' ? 0.75 * bw : bw;   // centre-to-centre, x
+      const dy = orient === 'flat' ? bh : 0.75 * bh;   // centre-to-centre, y
+      const cols = Math.max(1, Math.floor((nW - ox - bw) / dx + 1e-6) + 1);
+      const rows = Math.max(1, Math.floor((nH - oy - bh) / dy + 1e-6) + 1);
+      const offX = (orient === 'pointy' && rows > 1) ? bw / 2 : 0;   // odd rows shift +x
+      const offY = (orient === 'flat' && cols > 1) ? bh / 2 : 0;     // odd cols shift +y
+      const gridW = bw + (cols - 1) * dx + offX;
+      const gridH = bh + (rows - 1) * dy + offY;
+      return { cols, rows, g, ox, oy, dx, dy, bw, bh, orient, gridX0: ox, gridY0: oy, gridW, gridH };
+    }
+    // Per-orientation step geometry: cell-to-cell spacing (dx,dy) + bbox dims.
+    function hexGeom(g, orient) {
+      const { w: bw, h: bh } = hexBBox(g, orient);
+      return { bw, bh, dx: orient === 'flat' ? 0.75 * bw : bw, dy: orient === 'flat' ? bh : 0.75 * bh };
+    }
+    // Centre of hex (c,r) in image px. Alternate columns (flat) / rows (pointy)
+    // are shifted half a hex; `c & 1` keeps parity correct for negative indices.
+    function hexCenter(orient, geom, ox, oy, c, r) {
+      const { bw, bh, dx, dy } = geom;
+      return {
+        cx: ox + bw / 2 + c * dx + (orient === 'pointy' && (r & 1) ? bw / 2 : 0),
+        cy: oy + bh / 2 + r * dy + (orient === 'flat' && (c & 1) ? bh / 2 : 0),
+      };
+    }
+    // Image-px bbox of the hex column/row range [hC0,hC1) × [hR0,hR1) (indices may
+    // be negative). The box is the UNSTAGGERED whole-cell rectangle (exactly
+    // nC×nR cells: (nC-1)·dx+bw by (nR-1)·dy+bh), anchored on the even reference.
+    // It deliberately does NOT add the half-step overhang of the alternate
+    // columns/rows: the truncation lines snap to whole-cell grid lines, so the
+    // offset cells on the trailing edge (bottom for flat, right for pointy) are
+    // cut in half rather than the window dangling half a cell past them.
+    function hexWindowBox(orient, g, ox, oy, hC0, hC1, hR0, hR1) {
+      const { bw, bh, dx, dy } = hexGeom(g, orient);
+      const nC = hC1 - hC0, nR = hR1 - hR0;
+      return { x: ox + hC0 * dx, y: oy + hR0 * dy, w: (nC - 1) * dx + bw, h: (nR - 1) * dy + bh };
+    }
+    // Set the hex window to the default extent for the current EDGES MODE — the
+    // hex analogue of square's crop/expand:
+    //   EXPAND → the smallest window whose box COVERS the whole image, so no image
+    //            pixel is left outside the hexes; the box pokes off-image where
+    //            paint() fills the margins with the chosen fill.
+    //   CROP   → only hexes whose box lies fully inside the image (no fill).
+    // Both stay draggable afterwards; toggling the mode re-applies this default.
+    function setHexWindow() {
+      const w = S.edgeMode === 'expand' ? hexCoverWindow() : hexCropWindow();
+      S.winC0 = w.hC0; S.winC1 = w.hC1; S.winR0 = w.hR0; S.winR1 = w.hR1;
+      S.loaded.cols = w.hC1 - w.hC0; S.loaded.rows = w.hR1 - w.hR0;
+    }
+    // The hex column/row index range that the image actually contains (indices may
+    // be negative). Counts a hex when its CENTRE falls inside the image — the same
+    // notion the readout's NN×MM reports. Using bbox coverage instead would add the
+    // phantom edge hexes whose tips/half-step overhang merely graze the image,
+    // inflating the count by a row/column on each side (e.g. a tight 5×5 → 7×7).
+    // Centres use the unstaggered (even) reference so the window stays rectangular;
+    // the alternate-column/row half-step overhang is handled by hexWindowBox.
+    //
+    // The bounds are a half-open centre range [0, nW)×[0, nH): hC0/hR0 = first index
+    // with centre ≥ 0, hC1/hR1 = first index with centre ≥ size (exclusive). The
+    // exclusive end is ceil(span/step), NOT floor+1 — they agree for a mid-cell crop
+    // but differ when the crop falls exactly on a cell boundary (e.g. the source is
+    // cropped to include the offset columns' full half-step overhang): floor+1 would
+    // then count an extra phantom row/col whose centre sits right on the far edge.
+    function hexFullWindow() {
+      const nW = S.loaded.image.naturalWidth, nH = S.loaded.image.naturalHeight;
+      const { bw, bh, dx, dy } = hexGeom(S.loaded.hexG, S.hexOrient);
+      const ox = S.loaded.hexOX, oy = S.loaded.hexOY;
+      const cx0 = ox + bw / 2, cy0 = oy + bh / 2;   // centre of hex (col 0,row 0)
+      const E = 1e-6;
+      return {
+        hC0: Math.ceil(-cx0 / dx - E), hC1: Math.ceil((nW - cx0) / dx - E),
+        hR0: Math.ceil(-cy0 / dy - E), hR1: Math.ceil((nH - cy0) / dy - E),
+      };
+    }
+    // CROP analogue of hexFullWindow: the hex column/row range whose UNSTAGGERED
+    // whole-cell box (the same one hexWindowBox builds) lies fully inside the
+    // image, so the export is pure image content with no fill. The first kept
+    // index is where the box edge clears 0; the last is where it still clears the
+    // far edge (box left = ox + c·dx, box right = ox + (c)·dx + bw). If the grid
+    // is coarser than the image (nothing fits), fall back to the full window.
+    function hexCropWindow() {
+      const nW = S.loaded.image.naturalWidth, nH = S.loaded.image.naturalHeight;
+      const { bw, bh, dx, dy } = hexGeom(S.loaded.hexG, S.hexOrient);
+      const ox = S.loaded.hexOX, oy = S.loaded.hexOY, E = 1e-6;
+      const hC0 = Math.ceil(-ox / dx - E), hC1 = Math.floor((nW - bw - ox) / dx + E) + 1;
+      const hR0 = Math.ceil(-oy / dy - E), hR1 = Math.floor((nH - bh - oy) / dy + E) + 1;
+      if (hC1 <= hC0 || hR1 <= hR0) return hexFullWindow();
+      return { hC0, hC1, hR0, hR1 };
+    }
+    // EXPAND analogue: the smallest hex window whose UNSTAGGERED box COVERS the
+    // whole image (box.x ≤ 0 ≤ … ≤ box.right ≥ nW, likewise vertically), so every
+    // image pixel sits inside the hex grid and the off-image overhang is filled.
+    // It is the mirror of hexCropWindow — floor/ceil swapped so the box grows
+    // outward to enclose the image instead of shrinking inward to fit within it.
+    function hexCoverWindow() {
+      const nW = S.loaded.image.naturalWidth, nH = S.loaded.image.naturalHeight;
+      const { bw, bh, dx, dy } = hexGeom(S.loaded.hexG, S.hexOrient);
+      const ox = S.loaded.hexOX, oy = S.loaded.hexOY, E = 1e-6;
+      return {
+        hC0: Math.floor(-ox / dx + E),                 hC1: Math.ceil((nW - bw - ox) / dx - E) + 1,
+        hR0: Math.floor(-oy / dy + E),                 hR1: Math.ceil((nH - bh - oy) / dy - E) + 1,
+      };
+    }
+    // The current image's hex tiling (from loaded's hex params + the live orient).
+    function currentHexLayout() {
+      if (!S.loaded || S.loaded.gridType !== 'hex' || !(S.loaded.hexG > 0)) return null;
+      const nW = S.loaded.image.naturalWidth, nH = S.loaded.image.naturalHeight;
+      return hexLayout(nW, nH, S.hexOrient, S.loaded.hexG, S.loaded.hexOX, S.loaded.hexOY);
+    }
+    // The effective hex window (hex column/row index bounds), defaulting to the
+    // whole-image cover when the saved bounds aren't a valid hex window.
+    function hexWindow() {
+      if (S.winC1 > S.winC0 && S.winR1 > S.winR0) return { hC0: S.winC0, hC1: S.winC1, hR0: S.winR0, hR1: S.winR1 };
+      return hexFullWindow();
+    }
+    // Does the live hex window's box extend past the image on any side? (Drives
+    // the FILL control's enabled state — fill only matters when there's off-image
+    // margin to paint.) False for non-hex / unsized grids.
+    function hexWindowOffImage() {
+      if (!S.loaded || S.loaded.gridType !== 'hex' || !(S.loaded.hexG > 0)) return false;
+      const w = hexWindow();
+      const box = hexWindowBox(S.hexOrient, S.loaded.hexG, S.loaded.hexOX, S.loaded.hexOY, w.hC0, w.hC1, w.hR0, w.hR1);
+      const nW = S.loaded.image.naturalWidth, nH = S.loaded.image.naturalHeight;
+      return box.x < -0.5 || box.y < -0.5 || box.x + box.w > nW + 0.5 || box.y + box.h > nH + 0.5;
+    }
+    // HEX layout: a resizable window of whole hexes (the bbox of [hC0,hC1)×[hR0,hR1)),
+    // covering the image by default and extendable off-image (filled like the
+    // square MANUAL window). Returns a `win` layout so paint()/renderDisplay reuse
+    // the square window pipeline; the hex overlay is drawn separately.
+    function hexComputeLayout() {
+      const nW = S.loaded.image.naturalWidth, nH = S.loaded.image.naturalHeight;
+      if (!(S.loaded.hexG > 0)) return { outW: nW, outH: nH, src: { x: 0, y: 0, w: nW, h: nH }, dx: 0, dy: 0, fill: null, cols: 1, rows: 1, hex: true };
+      const w = hexWindow();
+      const box = hexWindowBox(S.hexOrient, S.loaded.hexG, S.loaded.hexOX, S.loaded.hexOY, w.hC0, w.hC1, w.hR0, w.hR1);
+      return {
+        win: { x: box.x, y: box.y, w: box.w, h: box.h },
+        outW: Math.max(1, Math.round(box.w)), outH: Math.max(1, Math.round(box.h)),
+        cols: w.hC1 - w.hC0, rows: w.hR1 - w.hR0, hex: true, hexWin: w,
+      };
+    }
+
     // ---- Result layout: how the edge-fix reshapes the map. Shared by the
     // on-canvas preview AND the PNG export so they always match. Returns
     // natural-pixel geometry: output size, source crop / placement, optional
     // fill, resulting cell counts, and grid-line fractions within the result. ----
     function computeLayout() {
+      if (S.loaded && S.loaded.gridType === 'hex') return hexComputeLayout();
       const image = S.loaded.image, nW = image.naturalWidth, nH = image.naturalHeight;
       if (S.manual) {
         // MANUAL: the window is grid-cell bounds [winC0,winC1) × [winR0,winR1),
@@ -888,12 +1296,47 @@
       for (let f = hOff % hFrac; f <= 1.0001; f += hFrac) { const y = Math.round(ry + f * rh) + 0.5; g.moveTo(rx, y); g.lineTo(rx + rw, y); }
       g.stroke();
     }
+    // HEX overlay: stroke every whole hexagon of the current tiling. Image-px hex
+    // centres are mapped to buffer px by `scale` (+ the image's offset within the
+    // buffer). Same stroke palette as drawGrid (cyan when estimated, else yellow).
+    // Stroke every hexagon of a window range (defaults to the live hex window),
+    // mapping image-px centres to buffer px by `scale` (+ image origin ox,oy).
+    // Hexes fully outside the buffer are culled. Same palette as drawGrid.
+    function drawHexOverlay(dW, dH, scale, ox, oy, range) {
+      gridC.width = dW; gridC.height = dH;
+      const g = gridC.getContext('2d');
+      g.clearRect(0, 0, dW, dH);
+      if (!S.loaded || S.loaded.gridType !== 'hex' || !(S.loaded.hexG > 0)) return;
+      const orient = S.hexOrient, hg = S.loaded.hexG, geom = hexGeom(hg, orient);
+      const win = range || hexWindow();
+      const corners = hexCorners(hg, orient);
+      const rx = (geom.bw / 2) * scale, ry = (geom.bh / 2) * scale;
+      g.lineWidth = 1;
+      g.strokeStyle = S.loaded.estimated ? 'rgba(0,240,255,0.75)' : 'rgba(252,238,10,0.85)';
+      g.beginPath();
+      for (let r = win.hR0; r < win.hR1; r++) {
+        for (let c = win.hC0; c < win.hC1; c++) {
+          const { cx, cy } = hexCenter(orient, geom, S.loaded.hexOX, S.loaded.hexOY, c, r);
+          const bx = ox + cx * scale, by = oy + cy * scale;
+          if (bx + rx < 0 || bx - rx > dW || by + ry < 0 || by - ry > dH) continue;   // off-buffer cull
+          for (let i = 0; i < 6; i++) {
+            const X = ox + (cx + corners[i].x) * scale, Y = oy + (cy + corners[i].y) * scale;
+            i ? g.lineTo(X, Y) : g.moveTo(X, Y);
+          }
+          g.closePath();
+        }
+      }
+      g.stroke();
+    }
     // EXPORT scale factor so each grid cell renders at `exportCellPx` px (0 = native).
     // Clamped so the exported canvas never exceeds MAX_EXPORT_SIDE on a side.
     const MAX_EXPORT_SIDE = 12000;
     function scaleFactorFor(cols, outW, outH) {
       if (!S.exportCellPx || !(outW > 0) || !(cols > 0)) return 1;
-      let f = S.exportCellPx / (outW / cols);          // target px ÷ native px-per-cell
+      // native px per cell: square = output width / cols; hex = the flat-to-flat g
+      // (the VTT grid size), so "70px cell" matches Roll20/Foundry on hex maps too.
+      const nativeCellPx = (S.loaded && S.loaded.gridType === 'hex' && S.loaded.hexG > 0) ? S.loaded.hexG : (outW / cols);
+      let f = S.exportCellPx / nativeCellPx;            // target px ÷ native px-per-cell
       const big = Math.max(outW, outH || 0) * f;
       if (big > MAX_EXPORT_SIDE) f *= MAX_EXPORT_SIDE / big;
       return f;
@@ -947,15 +1390,23 @@
         const wX = Math.round((wx - ux0) * scale), wY = Math.round((wy - uy0) * scale);
         if (S.fillMode === 'transparent') ctx.clearRect(wX, wY, off.width, off.height);   // reveal the checkerboard through transparent padding
         ctx.drawImage(off, wX, wY);
-        const cellW = L.win.w / (S.winC1 - S.winC0), cellH = L.win.h / (S.winR1 - S.winR0);
         S.trimRect = { x: wX, y: wY, w: off.width, h: off.height }; S.showDelim = true; S.delimGrips = true;   // draggable delimiter
-        S.trimGeom = { ux0: ux0, uy0: uy0, scale: scale, cellW: cellW, cellH: cellH,
-          baseX: L.win.x - S.winC0 * cellW, baseY: L.win.y - S.winR0 * cellH };
-        drawGrid(L.vFrac, L.vOff, L.hFrac, L.hOff, dW, dH, { x: wX, y: wY, w: off.width, h: off.height });
+        if (L.hex) {
+          // hex: the delimiter snaps in whole hexes — feed trimMoveTo the hex step
+          // (dx,dy) + origin, and overlay hexes mapped by the image origin (ix,iy).
+          const geom = hexGeom(S.loaded.hexG, S.hexOrient);
+          S.trimGeom = { ux0: ux0, uy0: uy0, scale: scale, cellW: geom.dx, cellH: geom.dy, baseX: S.loaded.hexOX, baseY: S.loaded.hexOY };
+          drawHexOverlay(dW, dH, scale, ix, iy, L.hexWin);
+        } else {
+          const cellW = L.win.w / (S.winC1 - S.winC0), cellH = L.win.h / (S.winR1 - S.winR0);
+          S.trimGeom = { ux0: ux0, uy0: uy0, scale: scale, cellW: cellW, cellH: cellH,
+            baseX: L.win.x - S.winC0 * cellW, baseY: L.win.y - S.winR0 * cellH };
+          drawGrid(L.vFrac, L.vOff, L.hFrac, L.hOff, dW, dH, { x: wX, y: wY, w: off.width, h: off.height });
+        }
         setReadout(L.cols, L.rows, L.outW, L.outH);
         return;
       }
-      if (fixEdges && S.edgeMode === 'crop' && L.src) {
+      if (fixEdges && (S.edgeMode === 'crop' || L.hex) && L.src) {
         const scale = Math.min(1, DISPLAY_MAX / Math.max(nW, nH));
         S.dispScale = scale;
         const dW = Math.max(1, Math.round(nW * scale)), dH = Math.max(1, Math.round(nH * scale));
@@ -969,9 +1420,10 @@
         ctx.fillRect(0, ky, kx, kh);
         ctx.fillRect(kx + kw, ky, dW - (kx + kw), kh);
         tintCanvas(ctx, kx, ky, kw, kh);   // night tint on the kept region (matches the export)
-        S.trimRect = { x: kx, y: ky, w: kw, h: kh }; S.trimGeom = null; S.showDelim = true; S.delimGrips = true;   // draggable delimiter
-        const v = view();
-        drawGrid(v.vFrac, v.vOff, v.hFrac, v.hOff, dW, dH);
+        // hex has no draggable whole-cell window; show a static crop boundary only
+        S.trimRect = { x: kx, y: ky, w: kw, h: kh }; S.trimGeom = null; S.showDelim = true; S.delimGrips = !L.hex;
+        if (L.hex) drawHexOverlay(dW, dH, scale, 0, 0);
+        else { const v = view(); drawGrid(v.vFrac, v.vOff, v.hFrac, v.hOff, dW, dH); }
         setReadout(L.cols, L.rows, L.outW, L.outH);
         return;
       }
@@ -1148,11 +1600,18 @@
       zone.classList.remove('selecting');
       syncAutoMode(); renderDisplay();
     }
-    function runCellSeed(box) {                   // box ≈ a 2×2 cell block → seed = box ÷ 2 (both axes averaged)
+    // SQUARE: box ≈ a 2×2 cell block → seed = box ÷ 2. HEX: box ≈ 3 tightly-grouped
+    // hexes → g from the cluster geometry, lattice origin refined from the image.
+    function runCellSeed(box) {
       S.selecting = false; S.cellMode = false; S.regions = []; S.dragRect = null; S.dragStart = null;
       zone.classList.remove('selecting');
-      const seed = (box.w / 2 + box.h / 2) / 2;   // square cell size in image px
-      detectGrid(null, seed);                     // quincunx probe, period locked near `seed` ± margin
+      if (S.loaded.gridType === 'hex') {
+        const g = hexGFromCluster(box, S.hexOrient);   // flat-to-flat size from the 3-hex cluster
+        detectGrid(null, 0, 'hex', { g, orient: S.hexOrient });
+      } else {
+        const seed = (box.w / 2 + box.h / 2) / 2;   // square cell size in image px
+        detectGrid(null, seed);                     // quincunx probe, period locked near `seed` ± margin
+      }
       S.manual = false; S.gCols = S.loaded.cols; S.gRows = S.loaded.rows; S.offX = 0; S.offY = 0;
       applyAutoFix();
       syncAutoMode(); renderDisplay();
@@ -1231,6 +1690,7 @@
       if (d.edges.r) S.winC1 = Math.max(cellX, S.winC0 + 1);
       if (d.edges.t) S.winR0 = Math.min(cellY, S.winR1 - 1);
       if (d.edges.b) S.winR1 = Math.max(cellY, S.winR0 + 1);
+      syncToggles();   // a hex extend/trim may push the window off-image → enable/disable FILL
       renderDisplay();
     }
     canvasWrap.addEventListener('mousedown', (e) => {
@@ -1256,7 +1716,8 @@
         if (!trimDrag.started) {
           if (Math.hypot(e.clientX - trimDrag.x, e.clientY - trimDrag.y) < PAN_THRESHOLD) return;
           trimDrag.started = true;
-          if (!S.manual) { setManual(); syncAutoMode(); renderDisplay(); }   // render → sets trimGeom
+          // hex is always windowed (no square MANUAL switch); square needs setManual()
+          if (!S.manual && S.loaded.gridType !== 'hex') { setManual(); syncAutoMode(); renderDisplay(); }
           if (!S.trimGeom) { trimDrag = null; return; }
           // capture a FIXED image↔screen mapping for the whole drag (stable even
           // if extending the window resizes/recentres the canvas as it grows)
@@ -1334,7 +1795,7 @@
         let nx = o.x + (p.x - S.cellDrag.start.x), ny = o.y + (p.y - S.cellDrag.start.y);
         nx = snapTo(nx, 0, thr); nx = Math.abs((nx + o.w) - nW) <= thr ? nW - o.w : nx;   // left side, then right side
         ny = snapTo(ny, 0, thr); ny = Math.abs((ny + o.h) - nH) <= thr ? nH - o.h : ny;   // top side, then bottom side
-        S.drawnCell = { x: nx, y: ny, w: o.w, h: o.h };
+        S.drawnCell = { x: nx, y: ny, w: o.w, h: o.h, g: o.g };   // g preserved for hex; ignored for square
         applyDrawnCell();
       } else {   // resize — kept SQUARE; the fixed (opposite) edges anchor the cell
         const o = S.cellDrag.orig, ed = S.cellDrag.edges;

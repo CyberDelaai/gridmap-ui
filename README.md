@@ -24,7 +24,11 @@ the cell count. No build step, no backend — just open `index.html`.
   map; the readout and PNG export use the hex column×row count, with cell-size
   scaling measured flat-to-flat (the VTT "grid size"). **EDGES** mode works for
   hex too — **CROP** keeps only whole hexes inside the image, **EXPAND** pads the
-  edge hexes out and paints the chosen **FILL** into the off-image margin.
+  edge hexes out and paints the chosen **FILL** into the off-image margin. Because
+  alternate columns/rows are offset half a hex, the hex crop window steps in
+  **half-hex** increments along the offset axis (rows for HEX (H), columns for
+  HEX (V)), so the staggered edge cells crop cleanly. Both offset parities
+  (Foundry-style "odd"/"even") are handled automatically by detection — no toggle.
 - **Export scaling** — scale the exported PNG so each cell is a chosen pixel size:
   VTT presets (Roll20 70px, Foundry 100/150px) or a custom value.
 
@@ -55,13 +59,6 @@ size, so `g = 2 × period` — and a coarse 2-D search lands the lattice origin 
 the real edges. AUTO classifies square vs hex automatically; the GRID TYPE
 dropdown (SQUARE / HEX (H) / HEX (V)) forces either type and orientation, falling
 back to a hand-drawn hex when detection isn't confident.
-
-## Planned / next
-
-- **Crop to whole cells** — PNG export that trims partial outer cells so every
-  exported cell is complete.
-- **Sized filename** — the exported PNG named with its `NNxMM` grid size.
-- **Detection controls** — sensitivity, manual grid override, origin nudge.
 
 GRIDMAP *analyses* existing map images — there's no custom-map construction.
 

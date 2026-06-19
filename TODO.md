@@ -9,4 +9,4 @@ _(none pending)_
 
 ## SMALL (Z version bump)
 
-1. Foundry-style odd/even offset variants and non-regular (stretched) hexes.
+1. Non-regular (stretched) hexes.

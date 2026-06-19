@@ -425,8 +425,10 @@
         S.manual = localStorage.getItem('gridmap:manual') === '1';
         S.gCols = gi('gridmap:gCols', S.loaded.cols); S.gRows = gi('gridmap:gRows', S.loaded.rows);
         S.offX = gf('gridmap:offX', 0); S.offY = gf('gridmap:offY', 0);
-        S.winC0 = gi('gridmap:winC0', 0); S.winR0 = gi('gridmap:winR0', 0);
-        S.winC1 = gi('gridmap:winC1', S.gCols); S.winR1 = gi('gridmap:winR1', S.gRows);
+        // parseFloat (not parseInt): hex windows may carry ½-hex bounds on the
+        // staggered axis. Square windows are whole, so floats round-trip harmlessly.
+        S.winC0 = gf('gridmap:winC0', 0); S.winR0 = gf('gridmap:winR0', 0);
+        S.winC1 = gf('gridmap:winC1', S.gCols); S.winR1 = gf('gridmap:winR1', S.gRows);
         const dc = JSON.parse(localStorage.getItem('gridmap:drawnCell') || 'null');
         S.drawnCell = (dc && dc.w > 0 && dc.h > 0) ? dc : null;
         // GRID TYPE + hex geometry (default square keeps the detector pipeline)
@@ -437,7 +439,7 @@
           // restore the saved hex window (its counts drive the readout); if the
           // saved bounds aren't a valid hex window, default to covering the image
           if (S.loaded.hexG > 0 && S.winC1 > S.winC0 && S.winR1 > S.winR0 && localStorage.getItem('gridmap:winC1') !== null) {
-            S.loaded.cols = S.winC1 - S.winC0; S.loaded.rows = S.winR1 - S.winR0;
+            S.loaded.cols = Math.round(S.winC1 - S.winC0); S.loaded.rows = Math.round(S.winR1 - S.winR0);
           } else if (S.loaded.hexG > 0) {
             setHexWindow();
           }
@@ -612,6 +614,9 @@
         const g = S.drawnCell.g || hexGFromBBox(S.drawnCell, o);
         S.drawnCell = clampDrawnCell({ x: S.drawnCell.x, y: S.drawnCell.y, g: g });   // reshape bbox to the new orientation
         applyDrawnCell();
+      } else if (S.loaded && S.loaded.gridType === 'hex' && S.loaded.hexG > 0) {
+        setHexWindow();   // re-derive the window for the new staggered axis (the ½-hex
+                          // bound must follow the orientation, else it strands on a whole axis)
       }
       syncGridTypeUI();
       if (S.loaded) renderDisplay();
@@ -905,6 +910,10 @@
     // columns/rows: the truncation lines snap to whole-cell grid lines, so the
     // offset cells on the trailing edge (bottom for flat, right for pointy) are
     // cut in half rather than the window dangling half a cell past them.
+    // Bounds on the STAGGERED axis may be half-integers (½-hex crop steps). That's
+    // exact: on that axis the step (dy for flat, dx for pointy) equals the bbox
+    // dimension, so (nR-1)·dy + bh collapses to nR·dy and a .5 bound lands the edge
+    // precisely on the alternate column/row's offset line.
     function hexWindowBox(orient, g, ox, oy, hC0, hC1, hR0, hR1) {
       const { bw, bh, dx, dy } = hexGeom(g, orient);
       const nC = hC1 - hC0, nR = hR1 - hR0;
@@ -920,7 +929,9 @@
     function setHexWindow() {
       const w = S.edgeMode === 'expand' ? hexCoverWindow() : hexCropWindow();
       S.winC0 = w.hC0; S.winC1 = w.hC1; S.winR0 = w.hR0; S.winR1 = w.hR1;
-      S.loaded.cols = w.hC1 - w.hC0; S.loaded.rows = w.hR1 - w.hR0;
+      // span may be fractional on the staggered axis (½-hex steps) → round the
+      // whole-hex count for the readout; the raw bounds drive the box geometry.
+      S.loaded.cols = Math.round(w.hC1 - w.hC0); S.loaded.rows = Math.round(w.hR1 - w.hR0);
     }
     // The hex column/row index range that the image actually contains (indices may
     // be negative). Counts a hex when its CENTRE falls inside the image — the same
@@ -957,8 +968,18 @@
       const nW = S.loaded.image.naturalWidth, nH = S.loaded.image.naturalHeight;
       const { bw, bh, dx, dy } = hexGeom(S.loaded.hexG, S.hexOrient);
       const ox = S.loaded.hexOX, oy = S.loaded.hexOY, E = 1e-6;
-      const hC0 = Math.ceil(-ox / dx - E), hC1 = Math.floor((nW - bw - ox) / dx + E) + 1;
-      const hR0 = Math.ceil(-oy / dy - E), hR1 = Math.floor((nH - bh - oy) / dy + E) + 1;
+      // The STAGGERED axis (rows for flat, cols for pointy) steps in ½-hex so the
+      // crop line can land on the alternate column/row's half-hex offset edge — its
+      // step equals that axis's bbox dimension, so the box edge is o + bound·step.
+      // The other axis keeps whole-hex steps (a half there would bisect hexes).
+      let hC0, hC1, hR0, hR1;
+      if (S.hexOrient === 'flat') {
+        hC0 = Math.ceil(-ox / dx - E); hC1 = Math.floor((nW - bw - ox) / dx + E) + 1;
+        hR0 = Math.ceil((-oy / dy) * 2 - E) / 2; hR1 = Math.floor(((nH - oy) / dy) * 2 + E) / 2;
+      } else {
+        hC0 = Math.ceil((-ox / dx) * 2 - E) / 2; hC1 = Math.floor(((nW - ox) / dx) * 2 + E) / 2;
+        hR0 = Math.ceil(-oy / dy - E); hR1 = Math.floor((nH - bh - oy) / dy + E) + 1;
+      }
       if (hC1 <= hC0 || hR1 <= hR0) return hexFullWindow();
       return { hC0, hC1, hR0, hR1 };
     }
@@ -971,9 +992,17 @@
       const nW = S.loaded.image.naturalWidth, nH = S.loaded.image.naturalHeight;
       const { bw, bh, dx, dy } = hexGeom(S.loaded.hexG, S.hexOrient);
       const ox = S.loaded.hexOX, oy = S.loaded.hexOY, E = 1e-6;
+      // Mirror of hexCropWindow: the staggered axis rounds OUTWARD in ½-hex steps so
+      // the box covers every offset edge hex; the other axis stays whole-hex.
+      if (S.hexOrient === 'flat') {
+        return {
+          hC0: Math.floor(-ox / dx + E),                 hC1: Math.ceil((nW - bw - ox) / dx - E) + 1,
+          hR0: Math.floor((-oy / dy) * 2 + E) / 2,       hR1: Math.ceil(((nH - oy) / dy) * 2 - E) / 2,
+        };
+      }
       return {
-        hC0: Math.floor(-ox / dx + E),                 hC1: Math.ceil((nW - bw - ox) / dx - E) + 1,
-        hR0: Math.floor(-oy / dy + E),                 hR1: Math.ceil((nH - bh - oy) / dy - E) + 1,
+        hC0: Math.floor((-ox / dx) * 2 + E) / 2,         hC1: Math.ceil(((nW - ox) / dx) * 2 - E) / 2,
+        hR0: Math.floor(-oy / dy + E),                   hR1: Math.ceil((nH - bh - oy) / dy - E) + 1,
       };
     }
     // The current image's hex tiling (from loaded's hex params + the live orient).
@@ -1010,7 +1039,7 @@
       return {
         win: { x: box.x, y: box.y, w: box.w, h: box.h },
         outW: Math.max(1, Math.round(box.w)), outH: Math.max(1, Math.round(box.h)),
-        cols: w.hC1 - w.hC0, rows: w.hR1 - w.hR0, hex: true, hexWin: w,
+        cols: Math.round(w.hC1 - w.hC0), rows: Math.round(w.hR1 - w.hR0), hex: true, hexWin: w,
       };
     }
 
@@ -1314,8 +1343,13 @@
       g.lineWidth = 1;
       g.strokeStyle = S.loaded.estimated ? 'rgba(0,240,255,0.75)' : 'rgba(252,238,10,0.85)';
       g.beginPath();
-      for (let r = win.hR0; r < win.hR1; r++) {
-        for (let c = win.hC0; c < win.hC1; c++) {
+      // The window bounds may be half-integers on the staggered axis (½-hex crop
+      // steps), but hexes live at INTEGER indices — iterate the integer range
+      // spanning the (rounded-outward) window so offset edge hexes still draw.
+      const c0 = Math.floor(win.hC0), c1 = Math.ceil(win.hC1);
+      const r0 = Math.floor(win.hR0), r1 = Math.ceil(win.hR1);
+      for (let r = r0; r < r1; r++) {
+        for (let c = c0; c < c1; c++) {
           const { cx, cy } = hexCenter(orient, geom, S.loaded.hexOX, S.loaded.hexOY, c, r);
           const bx = ox + cx * scale, by = oy + cy * scale;
           if (bx + rx < 0 || bx - rx > dW || by + ry < 0 || by - ry > dH) continue;   // off-buffer cull
@@ -1392,10 +1426,13 @@
         ctx.drawImage(off, wX, wY);
         S.trimRect = { x: wX, y: wY, w: off.width, h: off.height }; S.showDelim = true; S.delimGrips = true;   // draggable delimiter
         if (L.hex) {
-          // hex: the delimiter snaps in whole hexes — feed trimMoveTo the hex step
-          // (dx,dy) + origin, and overlay hexes mapped by the image origin (ix,iy).
+          // hex: feed trimMoveTo the hex step (dx,dy) + origin, and overlay hexes
+          // mapped by the image origin (ix,iy). The delimiter snaps in WHOLE hexes
+          // on the non-staggered axis and ½-hexes on the staggered one (flat → rows,
+          // pointy → cols), so the offset edge cells crop cleanly.
           const geom = hexGeom(S.loaded.hexG, S.hexOrient);
-          S.trimGeom = { ux0: ux0, uy0: uy0, scale: scale, cellW: geom.dx, cellH: geom.dy, baseX: S.loaded.hexOX, baseY: S.loaded.hexOY };
+          S.trimGeom = { ux0: ux0, uy0: uy0, scale: scale, cellW: geom.dx, cellH: geom.dy, baseX: S.loaded.hexOX, baseY: S.loaded.hexOY,
+            snapC: S.hexOrient === 'pointy' ? 0.5 : 1, snapR: S.hexOrient === 'flat' ? 0.5 : 1 };
           drawHexOverlay(dW, dH, scale, ix, iy, L.hexWin);
         } else {
           const cellW = L.win.w / (S.winC1 - S.winC0), cellH = L.win.h / (S.winR1 - S.winR0);
@@ -1682,10 +1719,11 @@
       if ((ed.r && ed.t) || (ed.l && ed.b)) return 'nesw-resize';
       return (ed.l || ed.r) ? 'ew-resize' : 'ns-resize';
     }
-    function trimMoveTo(cx, cy) {                 // snap the dragged edge(s) to the nearest grid cell
+    function trimMoveTo(cx, cy) {                 // snap the dragged edge(s) to the nearest grid step
       const d = trimDrag; if (!d || !d.ppi) return;
-      const cellX = Math.round(((cx - d.ox) / d.ppi - d.baseX) / d.cellW);
-      const cellY = Math.round(((cy - d.oy) / d.ppi - d.baseY) / d.cellH);
+      const snapC = d.snapC || 1, snapR = d.snapR || 1;   // ½ on a hex staggered axis, else whole
+      const cellX = Math.round(((cx - d.ox) / d.ppi - d.baseX) / d.cellW / snapC) * snapC;
+      const cellY = Math.round(((cy - d.oy) / d.ppi - d.baseY) / d.cellH / snapR) * snapR;
       if (d.edges.l) S.winC0 = Math.min(cellX, S.winC1 - 1);
       if (d.edges.r) S.winC1 = Math.max(cellX, S.winC0 + 1);
       if (d.edges.t) S.winR0 = Math.min(cellY, S.winR1 - 1);
@@ -1728,6 +1766,7 @@
           trimDrag.oy = r.top - S.trimGeom.uy0 * ppi;
           trimDrag.baseX = S.trimGeom.baseX; trimDrag.baseY = S.trimGeom.baseY;
           trimDrag.cellW = S.trimGeom.cellW; trimDrag.cellH = S.trimGeom.cellH;
+          trimDrag.snapC = S.trimGeom.snapC; trimDrag.snapR = S.trimGeom.snapR;   // ½-hex on the staggered axis
           canvasWrap.style.cursor = trimCursor(trimDrag.edges);
         }
         e.preventDefault(); trimMoveTo(e.clientX, e.clientY);

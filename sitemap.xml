@@ -1,9 +1,123 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://cyberdeck.tools/gridmap-ui/</loc>
     <lastmod>2026-10-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://cyberdeck.tools/gridmap-ui/" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cyberdeck.tools/gridmap-ui/ru/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://cyberdeck.tools/gridmap-ui/fr/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cyberdeck.tools/gridmap-ui/de/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cyberdeck.tools/gridmap-ui/es/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://cyberdeck.tools/gridmap-ui/it/" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cyberdeck.tools/gridmap-ui/ja/" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://cyberdeck.tools/gridmap-ui/zh/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cyberdeck.tools/gridmap-ui/" />
+  </url>
+  <url>
+    <loc>https://cyberdeck.tools/gridmap-ui/ru/</loc>
+    <lastmod>2026-10-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://cyberdeck.tools/gridmap-ui/" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cyberdeck.tools/gridmap-ui/ru/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://cyberdeck.tools/gridmap-ui/fr/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cyberdeck.tools/gridmap-ui/de/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cyberdeck.tools/gridmap-ui/es/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://cyberdeck.tools/gridmap-ui/it/" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cyberdeck.tools/gridmap-ui/ja/" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://cyberdeck.tools/gridmap-ui/zh/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cyberdeck.tools/gridmap-ui/" />
+  </url>
+  <url>
+    <loc>https://cyberdeck.tools/gridmap-ui/fr/</loc>
+    <lastmod>2026-10-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://cyberdeck.tools/gridmap-ui/" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cyberdeck.tools/gridmap-ui/ru/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://cyberdeck.tools/gridmap-ui/fr/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cyberdeck.tools/gridmap-ui/de/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cyberdeck.tools/gridmap-ui/es/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://cyberdeck.tools/gridmap-ui/it/" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cyberdeck.tools/gridmap-ui/ja/" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://cyberdeck.tools/gridmap-ui/zh/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cyberdeck.tools/gridmap-ui/" />
+  </url>
+  <url>
+    <loc>https://cyberdeck.tools/gridmap-ui/de/</loc>
+    <lastmod>2026-10-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://cyberdeck.tools/gridmap-ui/" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cyberdeck.tools/gridmap-ui/ru/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://cyberdeck.tools/gridmap-ui/fr/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cyberdeck.tools/gridmap-ui/de/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cyberdeck.tools/gridmap-ui/es/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://cyberdeck.tools/gridmap-ui/it/" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cyberdeck.tools/gridmap-ui/ja/" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://cyberdeck.tools/gridmap-ui/zh/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cyberdeck.tools/gridmap-ui/" />
+  </url>
+  <url>
+    <loc>https://cyberdeck.tools/gridmap-ui/es/</loc>
+    <lastmod>2026-10-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://cyberdeck.tools/gridmap-ui/" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cyberdeck.tools/gridmap-ui/ru/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://cyberdeck.tools/gridmap-ui/fr/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cyberdeck.tools/gridmap-ui/de/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cyberdeck.tools/gridmap-ui/es/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://cyberdeck.tools/gridmap-ui/it/" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cyberdeck.tools/gridmap-ui/ja/" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://cyberdeck.tools/gridmap-ui/zh/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cyberdeck.tools/gridmap-ui/" />
+  </url>
+  <url>
+    <loc>https://cyberdeck.tools/gridmap-ui/it/</loc>
+    <lastmod>2026-10-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://cyberdeck.tools/gridmap-ui/" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cyberdeck.tools/gridmap-ui/ru/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://cyberdeck.tools/gridmap-ui/fr/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cyberdeck.tools/gridmap-ui/de/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cyberdeck.tools/gridmap-ui/es/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://cyberdeck.tools/gridmap-ui/it/" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cyberdeck.tools/gridmap-ui/ja/" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://cyberdeck.tools/gridmap-ui/zh/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cyberdeck.tools/gridmap-ui/" />
+  </url>
+  <url>
+    <loc>https://cyberdeck.tools/gridmap-ui/ja/</loc>
+    <lastmod>2026-10-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://cyberdeck.tools/gridmap-ui/" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cyberdeck.tools/gridmap-ui/ru/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://cyberdeck.tools/gridmap-ui/fr/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cyberdeck.tools/gridmap-ui/de/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cyberdeck.tools/gridmap-ui/es/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://cyberdeck.tools/gridmap-ui/it/" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cyberdeck.tools/gridmap-ui/ja/" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://cyberdeck.tools/gridmap-ui/zh/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cyberdeck.tools/gridmap-ui/" />
+  </url>
+  <url>
+    <loc>https://cyberdeck.tools/gridmap-ui/zh/</loc>
+    <lastmod>2026-10-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://cyberdeck.tools/gridmap-ui/" />
+    <xhtml:link rel="alternate" hreflang="ru" href="https://cyberdeck.tools/gridmap-ui/ru/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://cyberdeck.tools/gridmap-ui/fr/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://cyberdeck.tools/gridmap-ui/de/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cyberdeck.tools/gridmap-ui/es/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://cyberdeck.tools/gridmap-ui/it/" />
+    <xhtml:link rel="alternate" hreflang="ja" href="https://cyberdeck.tools/gridmap-ui/ja/" />
+    <xhtml:link rel="alternate" hreflang="zh" href="https://cyberdeck.tools/gridmap-ui/zh/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cyberdeck.tools/gridmap-ui/" />
   </url>
 </urlset>

@@ -243,8 +243,19 @@
   (function initLang() {
     let lang = 'en';
     try { lang = localStorage.getItem('gridmap:lang') || (navigator.language || 'en').slice(0, 2).toLowerCase(); } catch (e) {}
+    // A generated language page (/gridmap-ui/ru/ … — see make_langs.py) pins its language.
+    const urlLang = document.documentElement.getAttribute('data-url-lang');
+    if (urlLang && I18N[urlLang]) lang = urlLang;
     const sel = $('uiLangSel');
-    if (sel) sel.addEventListener('change', () => applyLang(sel.value));
+    if (sel) sel.addEventListener('change', () => {
+      // Served over http(s): open that language's own URL (./ for EN, ./<lang>/
+      // otherwise — see make_langs.py) so the address matches the UI; on file://
+      // switch in place.
+      if (location.protocol === 'file:') return applyLang(sel.value);
+      try { localStorage.setItem('gridmap:lang', sel.value); } catch (e) {}
+      const root = document.documentElement.hasAttribute('data-url-lang') ? '../' : './';
+      location.href = new URL(root + (sel.value === 'en' ? '' : sel.value + '/'), location.href).href;
+    });
     applyLang(lang);
   })();
   GM.t = t;

@@ -16,6 +16,7 @@ THREE spots, all kept in sync here:
   - version-morph const   const VER = ' // vX.Y.Z';          (js/header.js)
 """
 import re
+import subprocess
 import sys
 from datetime import date
 from pathlib import Path
@@ -101,6 +102,8 @@ def main():
         path.write_text(text, encoding="utf-8")
     print(f"version: {old} -> {new}  ({total}/3 occurrences updated)")
     stamp_seo(new)
+    # the per-language pages are copies of index.html: rebuild them with the new version / dates
+    subprocess.run([sys.executable, str(TOOL_DIR / "make_langs.py")], check=False)
 
 
 if __name__ == "__main__":

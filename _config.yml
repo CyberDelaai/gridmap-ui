@@ -8,3 +8,4 @@ exclude:
   - README.md
   - TODO.md
   - bump_version.py
+  - make_langs.py

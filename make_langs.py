@@ -8,6 +8,7 @@ after load is invisible to them. Each language gets its own URL instead:
   - <html lang> + data-url-lang (the i18n code pins the UI language to it)
   - a translated <title>, meta description and og/twitter title + description
   - its own canonical / og:url / og:locale and the JSON-LD "url"
+  - its own preview image, previews/og-<lang>.png (make_preview.py), when present
   - relative asset paths prefixed with ../ (no <base>: it would break
     fragment references like url(#…) SVG filters)
 
@@ -138,6 +139,17 @@ def prefix_paths(text):
     return "".join(fix(p) for p in re.split(r"(<script\b.*?</script>)", text, flags=re.S))
 
 
+def with_preview(s, lang):
+    """og:image / twitter:image / JSON-LD image -> previews/og-<lang>.png, once
+    make_preview.py has rendered it (otherwise the page keeps its image)."""
+    if not (ROOT / "previews" / f"og-{lang}.png").exists():
+        return s
+    img = f"{BASE}previews/og-{lang}.png"
+    s = set_meta(s, "property", "og:image", img)
+    s = set_meta(s, "name", "twitter:image", img)
+    return sub1(s, r'("image": ")[^"]*(")', lambda m: m.group(1) + img + m.group(2), 'JSON-LD "image"')
+
+
 def localize(src, lang):
     t, s = SEO[lang], src
     s = sub1(s, r"\n", "\n" + GENERATED + "\n", "first line")  # right after the version comment
@@ -158,6 +170,9 @@ def localize(src, lang):
     else:  # no og:locale block in index.html: add one after og:url
         s = sub1(s, r'(<meta property="og:url" content="[^"]*" />\n)', lambda m: m.group(1) + "\n".join(locales) + "\n", "og:url")
     s = sub1(s, rf'("url": "){re.escape(BASE)}(")', lambda m: m.group(1) + url(lang) + m.group(2), 'JSON-LD "url"')
+    s = with_preview(s, lang)
+    s = set_meta(s, "property", "og:image:alt", t["og_title"])
+    s = set_meta(s, "name", "twitter:image:alt", t["og_title"])
     return prefix_paths(s)
 
 
@@ -213,7 +228,7 @@ def main():
             if len(t[k]) > limit:
                 print(f"warning: {lang} {k} is {len(t[k])} chars (> {limit})")
 
-    src = with_hreflang(INDEX.read_text(encoding="utf-8"))
+    src = with_preview(with_hreflang(INDEX.read_text(encoding="utf-8")), "en")
     INDEX.write_text(src, encoding="utf-8")
     for lang in LANGS[1:]:
         out = ROOT / lang / "index.html"

@@ -62,7 +62,7 @@
   (function setupVersionMorph() {
     const meta = $('tagMeta');
     if (!meta) return;
-    const GH_REPO = 'CyberDelaai/gridmap-ui';
+    const GH_COMMITS = 'https://api.github.com/repos/CyberDelaai/gridmap-ui/commits?per_page=1';
     // Version lives in 3 spots: this const, the #tagVersion span above, and
     // the line-1 `<!-- GRIDMAP v… -->` comment. Bump them all in sync with:
     //   python3 bump_version.py {x|y|z}
@@ -76,7 +76,7 @@
       const at = parseInt(localStorage.getItem(CA) || '0', 10);
       if (cached && (Date.now() - at) < TTL) return cached;
       try {
-        const r = await fetch('https://api.github.com/repos/' + GH_REPO + '/commits?per_page=1');
+        const r = await fetch(GH_COMMITS);
         if (!r.ok) return cached || '';
         const link = r.headers.get('Link');
         const m = link && link.match(/<[^>]*[?&]page=(\d+)>;\s*rel="last"/);
